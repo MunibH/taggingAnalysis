@@ -1,0 +1,10 @@
+*.mat
+*.png
+*.fig
+*.svg
+\results
+\results\
+\tagVidData
+\tagVidData\
+\figs
+\figs\
