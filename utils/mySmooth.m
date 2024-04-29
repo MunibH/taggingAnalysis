@@ -2,10 +2,13 @@ function [out,kernsd] = mySmooth(x, N, varargin)
 % operates on first dimension only - make sure first dim is time
 % gaussian kernel with window size N
 % varargin:
-%   'reflect' - reflect N elements from beginning of time series across
-%               0 index
-%   'zeropad' - pad N zeros across 0 index
-%   'none'    - don't handle boundary conditions
+%   varargin{1}
+%     'reflect' - reflect N elements from beginning of time series across
+%                 0 index
+%     'zeropad' - pad N zeros across 0 index
+%     'none'    - don't handle boundary conditions
+%   varargin{2}
+%     0 or 1 - causal (1) or noncausal(0). ausal by default
 
 % returns:
 % - out: filtered data, same size as x
@@ -16,7 +19,7 @@ function [out,kernsd] = mySmooth(x, N, varargin)
 % y = x + randn(size(x));
 % N = 51;
 % out = mySmooth(y,N,'reflect');
-% 
+%
 % figure;
 % subplot(3,1,1); plot(x);
 % xlim([-100 200])
@@ -61,6 +64,12 @@ else
     trim = 1;
 end
 
+if nargin > 3
+    doCausal = varargin{2};
+else
+    doCausal = 1;
+end
+
 
 
 Ncol = size(x_filt, 2);
@@ -69,8 +78,9 @@ Nel = size(x_filt, 1);
 kern = gausswin(N);
 kernsd = std(1:N);
 
-
-kern(1:floor(numel(kern)/2)) = 0; %causal
+if doCausal
+    kern(1:floor(numel(kern)/2)) = 0; %causal
+end
 kern = kern./sum(kern);
 
 out = zeros(Nel, Ncol);

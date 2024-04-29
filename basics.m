@@ -32,8 +32,8 @@ meta = [];
 
 % meta = allSessionMeta(meta,datapth);
 
-% meta = loadJPV8(meta,datapth);
-meta = loadJPV11(meta,datapth);
+meta = loadJPV8(meta,datapth);
+% meta = loadJPV11(meta,datapth);
 % meta = loadJPV12(meta,datapth);
 % meta = loadJPV13(meta,datapth);
 

@@ -1,12 +1,12 @@
 function ax = prettifyAxis(ax,varargin)
 
-if nargin > 2
+if nargin > 1
     tl = varargin{1}; % tick length multiplier
 else 
     tl = 2;
 end
 
-if nargin > 3
+if nargin > 2
     fs = varargin{2}; % axis font size
 else 
     fs = 13;

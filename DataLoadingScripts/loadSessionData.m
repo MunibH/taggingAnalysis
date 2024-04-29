@@ -8,7 +8,7 @@ else
     behav_only = 0;
 end
 
-disp("LOADING ALL DATA OBJECTS")
+disp(["LOADING DATA OBJ: " meta.anm ' ' meta.date])
 obj = loadObjs(meta);
 
 
@@ -26,7 +26,7 @@ params.eventTimes = getEventTimes(obj(1).bp.ev,params.events,params.alignEvent);
 for sessix = 1:numel(meta)
     for prbix = 1:numel(params.probe{sessix})
         disp('______________________________________________________')
-        disp(['Processing data for session ' [meta(sessix).anm '_' meta(sessix).date ' | Probe' num2str(params.probe{sessix}(prbix))   ]])
+        disp(['Processing data for Probe ' num2str(params.probe{sessix}(prbix)) ' - ' meta.region ])
         disp(' ')
 
         prbnum = params.probe{sessix}(prbix);
