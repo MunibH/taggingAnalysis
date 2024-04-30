@@ -18,7 +18,7 @@ if prbnum==1 || ~isfield(params,'trialid')
 end
 
 % find clusters to use
-params.cluid{prbnum} = findClusters({obj.clu{prbnum}(:).quality}', params.quality);
+params.cluid = findClusters({obj.clu{prbnum}(:).quality}', params.quality);
 disp(' ')
 disp('--Clusters Found')
 disp(' ')
@@ -40,7 +40,7 @@ end
 % align spikes in every cluster to an event
 obj = alignSpikes(obj,params,prbnum);
 disp(' ')
-disp('--Spikes Aligned')
+disp(['--Spikes Aligned to ' params.alignEvent])
 disp(' ')
 
 % get trial avg psth and single trial data
@@ -54,8 +54,8 @@ disp(' ')
 
 
 % reject units based on quality metrics
-[obj,params.cluid{prbnum}] = QMRejection(obj,params.cluid{prbnum},params.qm,prbnum);
-% [obj, params.cluid{prbnum}] = removeLowFRClusters(obj,params.cluid{prbnum},params.lowFR,prbnum);
+[obj,params.cluid] = QMRejection(obj,params.cluid,params.qm,prbnum);
+% [obj, params.cluid{prbnum}] = removeLowFRClusters(obj,params.cluid,params.lowFR,prbnum);
 disp(' ')
 disp('--Rejected units based on quality metrics')
 disp(' ')

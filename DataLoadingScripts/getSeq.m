@@ -17,10 +17,10 @@ obj.time = obj.time(1:end-1);
 spkedges = params.tmin:0.001:params.tmax;
 
 % get psths by condition
-obj.psth{prbnum} = zeros(numel(obj.time),numel(params.cluid{prbnum}),numel(params.condition));
+obj.psth = zeros(numel(obj.time),numel(params.cluid),numel(params.condition));
 if doPSTH
-    for i = 1:numel(params.cluid{prbnum})
-        curClu = params.cluid{prbnum}(i);
+    for i = 1:numel(params.cluid)
+        curClu = params.cluid(i);
         for j = 1:numel(params.condition)
 
             trix = params.trialid{j};
@@ -41,7 +41,7 @@ if doPSTH
 %             end
             N = N(1:end-1);
 
-            obj.psth{prbnum}(:,i,j) = mySmooth(N./numel(trix)./params.dt, params.smooth, params.bctype);  % trial-averaged separated by trial type
+            obj.psth(:,i,j) = mySmooth(N./numel(trix)./params.dt, params.smooth, params.bctype);  % trial-averaged separated by trial type
 
         end
     end
@@ -49,10 +49,10 @@ end
 
 
 % get single trial data
-obj.trialdat{prbnum} = zeros(numel(obj.time),numel(params.cluid{prbnum}),obj.bp.Ntrials);
+obj.trialdat = zeros(numel(obj.time),numel(params.cluid),obj.bp.Ntrials);
 % obj.trialspikes{prbnum} = zeros(numel(spkedges),numel(params.cluid{prbnum}),obj.bp.Ntrials);
-for i = 1:numel(params.cluid{prbnum})
-    curClu = params.cluid{prbnum}(i);
+for i = 1:numel(params.cluid)
+    curClu = params.cluid(i);
     for j = 1:obj.bp.Ntrials
 
         spkix = ismember(obj.clu{prbnum}(curClu).trial, j);
@@ -74,7 +74,7 @@ for i = 1:numel(params.cluid{prbnum})
         end
 
 
-        obj.trialdat{prbnum}(:,i,j) = mySmooth(N./params.dt,params.smooth, params.bctype);
+        obj.trialdat(:,i,j) = mySmooth(N./params.dt,params.smooth, params.bctype);
 
         %         % raw spikes
         %         spkN = histc(obj.clu{prbnum}(curClu).trialtm_aligned(spkix), spkedges);

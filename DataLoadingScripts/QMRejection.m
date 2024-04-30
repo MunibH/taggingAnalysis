@@ -1,9 +1,11 @@
 function [obj,cluid] = QMRejection(obj,cluid,qm,prbnum)
 %%
 
-if isempty(obj.metrics)
+% the first two if statements here do the same thing, just separate checks
+% if metrics exist and if it's empty
+if ~isfield(obj,'metrics')
     % just remove based on firing rate
-    meanfr = squeeze(mean(mean(obj.trialdat{prbnum},1),3));
+    meanfr = squeeze(mean(mean(obj.trialdat,1),3));
     use = ~(meanfr<qm.firing_rate);
 
     % always keep tagged units
@@ -12,8 +14,23 @@ if isempty(obj.metrics)
 
     
     cluid = cluid(use);
-    obj.psth{prbnum} = obj.psth{prbnum}(:,use,:);
-    obj.trialdat{prbnum} = obj.trialdat{prbnum}(:,use,:);
+    obj.psth = obj.psth(:,use,:);
+    obj.trialdat = obj.trialdat(:,use,:);
+    return
+end
+if isempty(obj.metrics)
+    % just remove based on firing rate
+    meanfr = squeeze(mean(mean(obj.trialdat,1),3));
+    use = ~(meanfr<qm.firing_rate);
+
+    % always keep tagged units
+    nTagged = numel(obj.tag);    
+    use(end-nTagged+1:end) = true; % keep tagged units always!!
+
+    
+    cluid = cluid(use);
+    obj.psth = obj.psth(:,use,:);
+    obj.trialdat = obj.trialdat(:,use,:);
     return
 end
 
@@ -32,8 +49,8 @@ use(end+1:end+nTagged1) = true; % keep tagged units always!!
 
 % remove units
 cluid = cluid(use);
-obj.psth{prbnum} = obj.psth{prbnum}(:,use,:);
-obj.trialdat{prbnum} = obj.trialdat{prbnum}(:,use,:);
+obj.psth = obj.psth(:,use,:);
+obj.trialdat = obj.trialdat(:,use,:);
 
 
 end % removeLowFRClusters

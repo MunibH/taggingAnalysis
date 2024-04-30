@@ -14,7 +14,7 @@ qualityList = strtrim(qualityList);
 
 
 if any(strcmpi(qualities,'all')) || strcmpi(qualities{1},'all')
-    idx = find(~ismember(qualityList,'garbage'));
+    idx = find(~ismember(qualityList,{'garbage','noise','trash'}));
 %     idx = 1:numel(qualityList);
     return
 end

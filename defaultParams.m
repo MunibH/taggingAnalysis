@@ -11,14 +11,20 @@ params.lowFR               = 0.1; % remove clusters with firing rates across all
 
 % set conditions to calculate PSTHs for (and get trial numbers for)
 params.condition(1)         = {'(hit|miss|no)'};                             % all trials
-params.condition(end+1)     = {'R&hit&~autowater'};                                     % right hit trials
-params.condition(end+1)     = {'L&hit&~autowater'};                                     % left hit trials
-params.condition(end+1)     = {'R&miss&~autowater'};                                     % right hit trials
-params.condition(end+1)     = {'L&miss&~autowater'};                                     % left hit trials
+params.condition(end+1)     = {'R&hit&~autowater&~early'};                   % right hit trials
+params.condition(end+1)     = {'L&hit&~autowater&~early'};                   % left hit trials
+params.condition(end+1)     = {'R&miss&~autowater&~early'};                  % right hit trials
+params.condition(end+1)     = {'L&miss&~autowater&~early'};                  % left hit trials
+
+params.condLabel{1} = 'all';
+params.condLabel{end+1} = 'rhit';
+params.condLabel{end+1} = 'lhit';
+params.condLabel{end+1} = 'rmiss';
+params.condLabel{end+1} = 'lmiss';
 
 % time from align event to grab data for
 params.tmin = -2.1;
-params.tmax = 2;
+params.tmax = 3;
 params.dt = 1/100; % bin size
 
 % smooth with causal gaussian kernel
@@ -26,7 +32,9 @@ params.smooth = 15;
 params.bctype = 'reflect';
 
 % cluster qualities to use
-params.quality = {'all'}; % accepts any cell array of strings - special character 'all' returns clusters of any quality
+params.quality = {'all'}; % accepts any cell array of strings 
+% - special character 'all' returns clusters of any quality, except
+% 'garbage', 'noise', 'trash'
 
 % params.traj_features = {{'tongue','left_tongue','right_tongue','jaw','trident','nose'},...
 %     {'top_tongue','topleft_tongue','bottom_tongue','bottomleft_tongue','jaw','top_paw','bottom_paw','top_nostril','bottom_nostril'}};
@@ -41,13 +49,15 @@ params.behav_only = 1; % if 1, don't process neural data - speeds up analysis if
 
 params.remove_tag = 1; % if 1, removes tagging trials before doing anything else
 
-params.region = {'ALM','tjM1','MC'}; % regions to use
-
 params.events = {'bitStart','sample','delay','goCue'};
 
 params.qm.presence_ratio = 0.9; % greater than
 params.qm.firing_rate = 1; % greater than
-params.qm.isi_viol = 10; % less than
+params.qm.isi_viol = 0.05; % less than
 %'unit_amp > 150'
+
+params.region = 'any'; % 'alm','tjm1','mc', 'any'
+params.probeType = 'any'; % 'h2','np2','np1', 'any'
+
 
 end % defaultParams()
