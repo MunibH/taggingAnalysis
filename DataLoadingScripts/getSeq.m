@@ -1,18 +1,18 @@
-function obj = getSeq(obj,params,prbnum,varargin)
+function obj = getSeq(obj,params,prbnum,edges,varargin)
 
 if isfield(obj,'psth')
     obj = rmfield(obj,{'psth','trialdat'});
 end
 
-if nargin > 3
+if nargin > 4
     doPSTH = varargin{1};
 else
     doPSTH = true;
 end
 
-edges = params.tmin:params.dt:params.tmax;
-obj.time = edges + params.dt/2;
-obj.time = obj.time(1:end-1);
+% edges = params.tmin:params.dt:params.tmax;
+% obj.time = edges + params.dt/2;
+% obj.time = obj.time(1:end-1);
 
 spkedges = params.tmin:0.001:params.tmax;
 

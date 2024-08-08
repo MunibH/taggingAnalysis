@@ -14,7 +14,7 @@ for i = 1:numel(plt.cond2plot)
     for j = 1:numel(rez.eventIX)
         ix = rez.eventIX(j);
         plot3(dat(ix,1),dat(ix,2),dat(ix,3), '.', 'MarkerSize', plt.ms,...
-              'Color', plt.col{i})
+              'Color', plt.col{i}./2)
     end
 end
 xlabel(['Dim ' num2str(d(1))])

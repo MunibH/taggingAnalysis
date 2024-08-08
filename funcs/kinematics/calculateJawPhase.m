@@ -2,7 +2,7 @@ function [phase,amplitude,analyticalSignal] = calculateJawPhase(jawpos)
     % jawpos is a 1d time series
 
     % Normalize the jaw movements
-    jawpos = (jawpos - mean(jawpos)) / std(jawpos);
+    % jawpos = (jawpos - mean(jawpos)) / std(jawpos);
 
     % mean_x = mean(jawpos(:, 1));
     % mean_y = mean(jawpos(:, 2));

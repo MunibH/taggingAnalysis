@@ -7,6 +7,7 @@ Ntrials = f.Ntrials;
 varnames = {};
 
 for i = 1:numel(fnames)
+
     if numel(f.(fnames{i}))==Ntrials && ~iscell(f.(fnames{i}))
         varnames{end+1} = fnames{i};
     else
@@ -18,6 +19,8 @@ for i = 1:numel(fnames)
                     varnames{end+1} = [fnames{i} '.' morefnames{j}];
                 end
             end
+        elseif ~isempty(f.(fnames{i}))
+            varnames{end+1} = fnames{i};
         end
     end
 end

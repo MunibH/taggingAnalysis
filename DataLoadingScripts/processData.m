@@ -1,70 +1,64 @@
-function [params,obj] = processData(obj,params,prbnum, varargin)
+function [params,obj] = processData(obj,meta,params,prbnum,edges)
 
-% varargin only accepts one input right now -> params.behav_only. If 1,
-% don't process clusters
-if nargin > 3
-    behav_only = varargin{1};
-else
-    behav_only = 0;
-end
 
 %% STANDARD ROUTINES
-% find trials to use (only need to do this once)
-if prbnum==1 || ~isfield(params,'trialid')
-    params.trialid = findTrials(obj, params.condition);
-    disp(' ')
-    disp('--Trials Found')
-    disp(' ')
-end
 
 % find clusters to use
-params.cluid = findClusters({obj.clu{prbnum}(:).quality}', params.quality);
-disp(' ')
-disp('--Clusters Found')
-disp(' ')
+[maskQuality,allquality] = findClustersByQuality(obj.clu{prbnum},obj.metrics{prbnum}, params.qm.quality);
+clumask = maskQuality;
+disp('~~~~~~~~~~~ Clusters Found ~~~~~~~~~~~')
 
-if behav_only
+% reject units based on quality metrics
+if params.qm.perform
+    maskQM = QMRejection(obj,params.qm,prbnum);
+    clumask = clumask&maskQM;
+    % [obj, params.cluid{prbnum}] = removeLowFRClusters(obj,params.cluid,params.lowFR,prbnum);
+    disp('~~~~~~~~~~~ Rejected units based on quality metrics ~~~~~~~~~~~')
+end
+
+if params.removeTagOverlap
+    maskTagOverlap = rejectTagOverlap(obj,params.tagOverlapThresh, prbnum);
+    clumask = clumask&maskTagOverlap;
+    disp('~~~~~~~~~~~ Rejected units based on overlap with tagged units ~~~~~~~~~~~')
+end
+
+
+params.clumask = clumask;
+params.cluid = find(params.clumask);
+
+% retrieve which shank, channel, and quality for each unit in params.cluid
+[params.channel,params.shank] = getShankAndChannels(obj,prbnum,params.cluid);
+params.quality = allquality(params.clumask);
+params.region = repmat({meta.region{prbnum}},numel(params.cluid),1);
+
+if params.behav_only
     return
 end
 
 % warp spikes post go cue according to median lick duration for each lick
-if isfield(params,'timeWarp')
-    if params.timeWarp
-        [obj,obj.lick] = timeWarp(obj,params,prbnum);
-        disp(' ')
-        disp('--Time Warp Finished')
-        disp(' ')
-    end
+if params.timeWarp
+    obj = timeWarp2(obj,params,prbnum);
+    disp('~~~~~~~~~~~ Time Warp Finished ~~~~~~~~~~~')
 end
 
 % align spikes in every cluster to an event
 obj = alignSpikes(obj,params,prbnum);
-disp(' ')
-disp(['--Spikes Aligned to ' params.alignEvent])
-disp(' ')
+disp(['~~~~~~~~~~~ Spikes Aligned to ' params.alignEvent ' ~~~~~~~~~~~'])
 
 % get trial avg psth and single trial data
 if ~isfield(params,'bctype') % boundary condition for smoothing
     params.bctype = 'none';
 end
-obj = getSeq(obj,params,prbnum);
-disp(' ')
-disp('--PSTHs and Single Trial Data Done')
-disp(' ')
+obj = getSeq(obj,params,prbnum,edges);
+disp('~~~~~~~~~~~ PSTHs and Single Trial Data Done ~~~~~~~~~~~')
 
 
-% reject units based on quality metrics
-[obj,params.cluid] = QMRejection(obj,params.cluid,params.qm,prbnum);
-% [obj, params.cluid{prbnum}] = removeLowFRClusters(obj,params.cluid,params.lowFR,prbnum);
-disp(' ')
-disp('--Rejected units based on quality metrics')
-disp(' ')
+
+
 % 
 % % get mean fr and std dev for each cluster/trial type during presample (baseline fr)
-% [obj.presampleFR{prbnum}, obj.presampleSigma{prbnum}] = baselineFR(obj,params,prbnum);
-% disp(' ')
-% disp('--Presample Statisitics Calculated')
-% disp(' ')
+[obj.baseline.mu, obj.baseline.sigma] = baselineFR(obj,params,prbnum);
+disp('~~~~~~~~~~~ Presample Statisitics Calculated ~~~~~~~~~~~')
 
 
 end

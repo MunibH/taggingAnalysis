@@ -4,43 +4,43 @@ function me = loadMotionEnergy(obj,meta,params,datapth)
 % %------------------------------------------------------------
 % % --first check to see if obj has an 'me' and has thresh--
 % % -----------------------------------------------------------
-% if isfield(obj,'me')
-%     if isstruct(obj.me) && ~iscell(obj.me.data)
-%         obj.me.move = obj.me.data > (obj.me.moveThresh);
-%         me = obj.me;
-%         return
-%     end
-% else
+objhasme = 0;
+if isfield(obj,'me')
+    me = obj.me;
+    objhasme = 1;
+end
 % -----------------------------------------------------------
 % -- if not, loadMotionEnergy, and save it it to obj.me--
 % -----------------------------------------------------------
 
 % find and load motion energy .mat file
-mepth = fullfile(datapth,'DataObjects',meta.anm);
-contents = dir(mepth);
-contents = contents(~[contents.isdir]);
-
-fns = {contents.name}';
-
-fn = patternMatchCellArray({contents.name}',{'motionEnergy',meta.date},'all');
-
-if numel(fn) == 1
-    fn = fn{1};
-elseif numel(fn) == 2
-    ix = ~contains(fn,'._'); % on windows, sometimes a file that starts with '._motionEnergy*' is found
-    fn = fn{ix};
-else
-    disp('UNABLE TO LOCATE A MOTION ENERGY FILE IN: ')
-    disp(mepth)
-    disp('      Continuing without motion energy as a feature')
-    me.use = 0;
-    me.data = nan;
-    me.moveThresh = nan;
-    return
+if ~objhasme
+    mepth = fullfile(datapth,'DataObjects',meta.anm);
+    contents = dir(mepth);
+    contents = contents(~[contents.isdir]);
+    
+    fns = {contents.name}';
+    
+    fn = patternMatchCellArray({contents.name}',{'motionEnergy',meta.date},'all');
+    
+    if numel(fn) == 1
+        fn = fn{1};
+    elseif numel(fn) == 2
+        ix = ~contains(fn,'._'); % on windows, sometimes a file that starts with '._motionEnergy*' is found
+        fn = fn{ix};
+    else
+        disp('UNABLE TO LOCATE A MOTION ENERGY FILE IN: ')
+        disp(mepth)
+        disp('      Continuing without motion energy as a feature')
+        me.use = 0;
+        me.data = nan;
+        me.moveThresh = nan;
+        return
+    end
+    
+    temp = load(fullfile(mepth,fn));
+    me = temp.me;
 end
-
-temp = load(fullfile(mepth,fn));
-me = temp.me;
 
 if iscell(me)
     temp = me;
@@ -51,10 +51,10 @@ elseif isstruct(me.data)
     me.data = me.data.data;
 end
 
-% delete tagging trials
-if params.remove_tag
-    me.data = me.data(1:obj.bp.Ntrials); % first set of trials in motion energy are behavior trials
-end
+% % % delete tagging trials (already doing this in deleteTaggingTrials
+% % if params.remove_tag
+% %     me.data = me.data(1:obj.bp.Ntrials); % first set of trials in motion energy are behavior trials
+% % end
 
 
 
@@ -85,19 +85,54 @@ me.data = fillmissing(me.data,'nearest');
 % -------------------------------------------------------------------
 % -- assign move time points as logical array same size as me.data --
 % -------------------------------------------------------------------
+% these values, except for YH come from 2-GMM fitting, see function below
+% i've just rounded these to nearest whole number
 if ~isfield(me,'moveThresh')
     if strcmp(meta.anm,'JPV8')
+        me.moveThresh = 8;
+    elseif strcmp(meta.anm,'JPV11') && strcmp(meta.date,'2023-06-16')
+        me.moveThresh = 14;
+    elseif strcmp(meta.anm,'JPV11') && strcmp(meta.date,'2023-06-21')
+        me.moveThresh = 9;
+    elseif strcmp(meta.anm,'JPV11') && strcmp(meta.date,'2023-06-22')
+        me.moveThresh = 10;
+    elseif strcmp(meta.anm,'JPV11') && strcmp(meta.date,'2023-06-23')
+        me.moveThresh = 8;
+    elseif strcmp(meta.anm,'JPV12') && strcmp(meta.date,'2023-08-02')
+        me.moveThresh = 7;
+    elseif strcmp(meta.anm,'JPV12') && strcmp(meta.date,'2023-08-05')
+        me.moveThresh = 9;
+    elseif strcmp(meta.anm,'JPV13') && strcmp(meta.date,'2023-10-03')
+        me.moveThresh = 11;
+    elseif strcmp(meta.anm,'JPV13') && strcmp(meta.date,'2023-10-04')
+        me.moveThresh = 11;
+    elseif strcmp(meta.anm,'JPV13') && strcmp(meta.date,'2023-10-05')
+        me.moveThresh = 9;
+    elseif strcmp(meta.anm,'MAH23') && strcmp(meta.date,'2024-07-03')
         me.moveThresh = 6;
-    elseif strcmp(meta.anm,'JPV11')
+    elseif strcmp(meta.anm,'MAH23') && strcmp(meta.date,'2024-07-05')
+        me.moveThresh = 8;
+    elseif strcmp(meta.anm,'MAH23') && strcmp(meta.date,'2024-07-06')
         me.moveThresh = 6;
-    elseif strcmp(meta.anm,'JPV12')
-        me.moveThresh = 6;
-    elseif strcmp(meta.anm,'JPV13')
-        me.moveThresh = 6;
+    elseif strcmp(meta.anm,'MAH24') && strcmp(meta.date,'2024-06-11')
+        me.moveThresh = 7;
+    elseif strcmp(meta.anm,'MAH24') && strcmp(meta.date,'2024-06-12')
+        me.moveThresh = 7;
+    elseif strcmp(meta.anm,'MAH24') && strcmp(meta.date,'2024-06-14')
+        me.moveThresh = 7;
+    elseif strcmp(meta.anm,'MAH24') && strcmp(meta.date,'2024-06-15')
+        me.moveThresh = 8;
+    elseif strcmp(meta.anm,'YH11')
+        me.moveThresh = 8;
+    elseif strcmp(meta.anm,'YH9')
+        me.moveThresh = 10.5;
     else
-        me.moveThresh = 6;
+        error('New session, need to find movement threshold');
     end
 end
+
+% [~, ~, me.moveThresh] = detectMovementGMM(cell2mat(obj.me'));
+
 me.move = me.data > (me.moveThresh);
 
 

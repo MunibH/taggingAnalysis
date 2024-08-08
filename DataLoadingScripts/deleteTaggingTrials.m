@@ -1,7 +1,7 @@
 % delete tagging trials from obj if tagging session
 function obj = deleteTaggingTrials(obj)
 if isfield(obj.bp, 'fns') % usually an optotagging session
-    ix = find(cell2mat(cellfun(@(x) contains(x,'MasterProtocol'),obj.bp.fns,'uni',0)));
+    ix = find(cell2mat(cellfun(@(x) ~contains(x,'optoTagging'),obj.bp.fns,'uni',0)));
     behavMask = obj.bp.fidx==ix; % logical array - 1 if behav trial, 0 otherwise
     % obj.bp
     obj.bp.Ntrials = sum(behavMask);
@@ -18,6 +18,12 @@ if isfield(obj.bp, 'fns') % usually an optotagging session
         obj.bp.autowaterBlock = obj.bp.autowaterBlock(behavMask);
     end
     obj.bp.autolearn = obj.bp.autolearn(behavMask);
+    if isfield(obj.bp,'trialTypes')
+        obj.bp.trialTypes = obj.bp.trialTypes(behavMask);
+    end
+    if isfield(obj.bp,'Nlicks')
+        obj.bp.Nlicks = obj.bp.Nlicks(behavMask);
+    end
     % obj.bp.ev
     obj.bp.ev.bitStart = obj.bp.ev.bitStart(behavMask);
     obj.bp.ev.sample = obj.bp.ev.sample(behavMask);
