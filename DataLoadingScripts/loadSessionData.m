@@ -1,97 +1,107 @@
-function [obj,params] = loadSessionData(meta,params, varargin)
+function [obj,params] = loadSessionData(meta,params,varargin)
 
-% varargin only accepts one input right now -> params.behav_only. If 1,
-% don't process clusters
 if nargin > 2
-    behav_only = varargin{1};
+    onlyObj = varargin{1};
 else
-    behav_only = 0;
+    onlyObj = false;
 end
 
-disp(["LOADING DATA OBJ: " meta.anm ' ' meta.date])
-obj = loadObjs(meta);
+%% load data obj
+disp(' ')
+disp(['~~~~~~~~~~~ LOADING DATA OBJ: ' meta.anm ' ' meta.date ' ~~~~~~~~~~~'])
+disp(' ')
+load(meta.datapth); % loads 'obj'
+if onlyObj
+    params = nan;
+    return
+end
 
-
-
-% delete tagging trials from obj if tagging session
+%% delete tagging trials from obj if tagging session
 if params.remove_tag
-    for sessix = 1:numel(meta)
-        obj(sessix) = deleteTaggingTrials(obj(sessix));
-    end
+    disp("~~~~~~~~~~~ Omitting tagging trials ~~~~~~~~~~~")
+    obj = deleteTaggingTrials(obj);
 end
 
-% event times
-params.eventTimes = getEventTimes(obj(1).bp.ev,params.events,params.alignEvent);
+%% trials by condition
+disp('~~~~~~~~~~~ Finding trials ~~~~~~~~~~~')
+params.trialid = findTrials(obj, params.condition);
 
-for sessix = 1:numel(meta)
-    for prbix = 1:numel(params.probe{sessix})
-        disp('______________________________________________________')
-        disp(['Processing data for Probe ' num2str(params.probe{sessix}(prbix)) ' - ' meta.region ])
-        disp(' ')
+%% time
+edges = params.tmin:params.dt:params.tmax;
+obj.time = edges + params.dt/2;
+obj.time = obj.time(1:end-1)';
 
-        prbnum = params.probe{sessix}(prbix);
+%% add fake probe for testing
+% meta.probe = [1 2];
+% obj.clu{2} = obj.clu{1}(1:20);
 
-        [sessparams{sessix,prbix},sessobj{sessix,prbix}] = processData(obj(sessix),params,prbnum, behav_only);
-    end
+
+%% process data per specified probe
+params.probe = meta.probe;
+params.region = meta.region;
+
+for prbix = 1:numel(params.probe)
+    disp(['~~~~~~~~~~~ Processing data for Probe ' num2str(params.probe(prbix)) ', ' meta.region{prbix} ' ~~~~~~~~~~~'])
+
+    prbnum = params.probe(prbix);
+    
+    % find clusters
+    % time warp
+    % align spikes
+    % firing rates
+    % unit rejection via quality metrics
+
+    [probeparams{prbix},probeobj{prbix}] = processData(obj,meta,params,prbnum,edges);
 end
 
-% clean up sessparams and sessobj
-for sessix = 1:numel(meta)
-    params.trialid{sessix} = sessparams{sessix}.trialid;
+%% 
+if numel(params.probe) == 1
 
-    if numel(params.probe{sessix}) == 1
-        params.cluid{sessix} = sessparams{sessix,1}.cluid{params.probe{sessix}};
+    params = probeparams{1};
+    obj = probeobj{1};
 
-        objs(sessix) = sessobj{sessix,1};
-
-        if behav_only
-            continue;
-        end
-
-        objs(sessix).psth = objs(sessix).psth{params.probe{sessix}};
-        objs(sessix).trialdat = objs(sessix).trialdat{params.probe{sessix}};
-        % objs(sessix).presampleFR = objs(sessix).presampleFR{params.probe{sessix}};
-        % objs(sessix).presampleSigma = objs(sessix).presampleSigma{params.probe{sessix}};
-    elseif numel(params.probe{sessix}) == 2 % concatenate both probes worth of data
-
-        params.cluid{sessix} = {sessparams{sessix,1}.cluid{params.probe{sessix}(1)}, sessparams{sessix,2}.cluid{params.probe{sessix}(2)} };
-
-        objs(sessix) = sessobj{sessix,1};
-
-        if behav_only
-            continue;
-        end
-
-        objs(sessix).psth = cat(2, objs(sessix).psth{1}, sessobj{sessix,2}.psth{2});
-        objs(sessix).trialdat = cat(2, objs(sessix).trialdat{1}, sessobj{sessix,2}.trialdat{2});
-        % objs(sessix).presampleFR = cat(1, objs(sessix).presampleFR{1}, sessobj{sessix,2}.presampleFR{2});
-        % objs(sessix).presampleSigma = cat(1, objs(sessix).presampleSigma{1}, sessobj{sessix,2}.presampleSigma{2});
-
-        % assign trialtm_aligned for 2nd probe
-        for i = 1:numel(objs(sessix).clu{2})
-            objs(sessix).clu{2}(i).trialtm_aligned = sessobj{sessix,2}.clu{2}(i).trialtm_aligned;
-        end
+    params.clumask = {params.clumask};
+    params.cluid = {params.cluid};
+    params.shank = {params.shank};
+    params.channel = {params.channel};
+    params.quality = {params.quality};
+    params.region = {params.region};
+    
+    if params.behav_only
+    else
+        obj.psth = {obj.psth};
+        obj.trialdat = {obj.trialdat};
+        obj.baseline = {obj.baseline};
     end
+
+
+elseif numel(params.probe) == 2
+
+    params.clumask = {probeparams{1}.clumask, probeparams{2}.clumask};
+    params.cluid = {probeparams{1}.cluid, probeparams{2}.cluid};
+    params.shank = {probeparams{1}.shank, probeparams{2}.shank};
+    params.channel = {probeparams{1}.channel, probeparams{2}.channel};
+    params.quality = {probeparams{1}.quality, probeparams{2}.quality};
+    params.region = {probeparams{1}.region, probeparams{2}.region};
+
+    if params.behav_only
+    else
+        obj.psth = {probeobj{1}.psth, probeobj{2}.psth};
+        obj.trialdat = {probeobj{1}.trialdat, probeobj{2}.trialdat};
+        obj.bp = probeobj{1}.bp;
+        obj.baseline = {probeobj{1}.baseline, probeobj{2}.baseline};
+    end
+
+else 
+    error('more than dual probe processing not yet implemented')
 end
+
+%% get event times
+params.eventTimes = getEventTimes(obj.bp.ev,params.events,params.alignEvent);
 
 disp(' ')
-disp('DATA LOADED AND PROCESSED')
+disp('~~~~~~~~~~~ DATA LOADED AND PROCESSED ~~~~~~~~~~~')
 disp(' ')
 
 
-clear obj
-obj = objs;
-clear objs
 
-
-%% convert params to a struct array (just for convenience)
-
-temp = params;
-clear params
-for sessix = 1:numel(meta)
-    temp2 = rmfield(temp,{'probe','trialid','cluid'});
-    temp2.probe = temp.probe{sessix};
-    temp2.trialid = temp.trialid{sessix};
-    temp2.cluid = temp.cluid{sessix};
-    params(sessix) = temp2;
-end

@@ -17,7 +17,7 @@ ylims = ax.YLim;
 fnames = fieldnames(evtimes);
 for i = 1:numel(fnames)
     this = evtimes.(fnames{i});
-    plot(ax,[this,this],ylims,'--','Color',lc)
+    plot(ax,[this,this],ylims,'--','Color',lc,'LineWidth',2)
     % xline(ax,evtimes.(fnames{i}),'k--');
 end
 if setylim

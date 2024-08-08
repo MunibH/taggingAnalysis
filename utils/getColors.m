@@ -11,4 +11,8 @@ clrs.afc = [156 54 152]./255;           % Purple
 clrs.aw = [255 147 0]./255;             % Orange​
 clrs.null = [62, 168, 105]./255;
 clrs.potent = [255, 56, 140]./255;
+
+clrs.lick2 = [44, 171, 97] ./ 255; % green
+clrs.lick5 = [93, 46, 176] ./ 255; % purple
+
 end

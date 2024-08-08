@@ -2,8 +2,8 @@
 
 # TODO
 
-a. Write data loading script to handle different probe types and regions
-b. go through loading scripts and make sure they work well
+a. Write data loading script that parses meta for provided  probe type, region
+b. go through loading scripts and make sure they work well, change to single session only
 
 1. single cell analysis
     1. selectivity

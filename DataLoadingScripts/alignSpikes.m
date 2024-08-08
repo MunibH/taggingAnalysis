@@ -59,6 +59,10 @@ end
 
 % align spikes to params.alignEvent
 for clu = 1:numel(obj.clu{prbnum})
+    if ~ismember(clu,params.cluid)
+        obj.clu{prbnum}(clu).trialtm_aligned = nan;
+        continue
+    end
     event = obj.bp.ev.(params.alignEvent)(obj.clu{prbnum}(clu).trial);
 
 %     if params.timeWarp

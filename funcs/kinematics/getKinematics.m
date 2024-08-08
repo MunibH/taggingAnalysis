@@ -35,6 +35,17 @@ if ismember('tongue',params.traj_features{1})
     kin.dat(:,:,end+1) = len;
 end
 
+
+% ----------------------------------------------
+% -- Phase of jaw --
+% ----------------------------------------------
+[jawphase,jawamp] = getPhaseOfJaw(kin); %calculateJawPhase(jawpos(:,ct));
+kin.featLeg{end+1} = 'jaw_phase';
+kin.featLeg{end+1} = 'jaw_amp';
+
+kin.dat(:,:,end+1) = jawphase;
+kin.dat(:,:,end+1) = jawamp;
+
 % ----------------------------------------------
 % -- Motion energy --
 % ----------------------------------------------
@@ -42,22 +53,22 @@ kin.featLeg{end+1} = 'motion_energy';
 
 kin.dat(:,:,end+1) = me.data;
 
-% ----------------------------------------------
-% -- Standardize kinematics --
-% ----------------------------------------------
-for featix = 1:size(kin.dat,3)
-    temp = kin.dat(:,:,featix);
-    temp2 = temp(:);
-    kin.dat_std(:,:,featix) = (temp - mean(temp2,'omitnan')) ./ std(temp2,'omitnan'); 
-end
+% % ----------------------------------------------
+% % -- Standardize kinematics --
+% % ----------------------------------------------
+% for featix = 1:size(kin.dat,3)
+%     temp = kin.dat(:,:,featix);
+%     temp2 = temp(:);
+%     kin.dat_std(:,:,featix) = (temp - mean(temp2,'omitnan')) ./ std(temp2,'omitnan'); 
+% end
 
-% ----------------------------------------------
-% -- DIMENSIONALITY REDUCTION --
-% ----------------------------------------------
-% many of the video features will be highly correlated, so we will perform PCA/FA
-% on the matrix of features to reduce the dimensionality to a set of factors that
-% best explain the movement captured by the video recordings
-kin.dat_reduced = reduceDimensionVideoFeatures(kin.dat,params.feat_varToExplain);
+% % ----------------------------------------------
+% % -- DIMENSIONALITY REDUCTION --
+% % ----------------------------------------------
+% % many of the video features will be highly correlated, so we will perform PCA/FA
+% % on the matrix of features to reduce the dimensionality to a set of factors that
+% % best explain the movement captured by the video recordings
+% kin.dat_reduced = reduceDimensionVideoFeatures(kin.dat,params.feat_varToExplain);
 
 kin = rmfield(kin,'nans');
 

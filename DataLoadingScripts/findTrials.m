@@ -17,17 +17,20 @@ for i = 1:numel(varnames)
         eval([varnames{i} '=' varnames{i} ''';']);
     end
     
-    eval([varnames{i} '=' varnames{i} '(~isnan(' varnames{i} '))' ''';'])
+    if ~ismember(varnames{i},{'fns'})
+        eval([varnames{i} '=' varnames{i} '(~isnan(' varnames{i} '))' ''';'])
+    end
 end
 
 
 mask = zeros(obj.bp.Ntrials, numel(conditions));
 
 for i = 1:numel(conditions)
-    try
-        mask(:,i) = eval(conditions{i});
-    catch
+    thiscond = conditions{i};
+    if iscell(thiscond)
         mask(:,i) = eval(conditions{i}{1});
+    else
+        mask(:,i) = eval(thiscond);
     end
     trialNums{i} = find(mask(:,i));
 end

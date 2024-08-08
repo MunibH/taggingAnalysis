@@ -1,17 +1,12 @@
 function meta = allSessionMeta(meta,datapth)
 
-% datapth = 'C:\Users\munib\Documents\Economo-Lab\data';
-% meta = [];
-
-%% these sessions were before implementing tshift,tprime,bombcell
-
 % H2 sessions
-meta = loadJPV8(meta,datapth);
-meta = loadJPV11(meta,datapth);
-meta = loadJPV12(meta,datapth);
+meta = loadJPV8(meta,datapth);  % 1 session
+meta = loadJPV11(meta,datapth); % 4 sessions
+meta = loadJPV12(meta,datapth); % 2 sessions
+meta = loadJPV13(meta,datapth); % 3 sessions
 % NP2 sessions
-meta = loadJPV13(meta,datapth);
-
-%% these sessions were after implementing tshift,tprime,bombcell
+meta = loadMAH23(meta,datapth); % 3 sessions
+meta = loadMAH24(meta,datapth); % 4 sessions (2 dual-probe)
 
 end
