@@ -22,9 +22,9 @@ params.subset.probeType = 'any'; % 'h2','np2','np1', 'any'
 % params.qm.quality = {'single','mua','non-somatic','non-somatic-mua'};
 params.qm.quality = {'tagged'};
 
-params.alignEvent = 'lastLick';
-params.tmin = -4;
-params.tmax = 2;
+% params.alignEvent = 'lastLick';
+% params.tmin = -4;
+% params.tmax = 2;
 
 params.behav_only = 0;
 
@@ -35,14 +35,14 @@ params.behav_only = 0;
 datapth = 'C:\Users\munib\Documents\Economo-Lab\data';
 meta = [];
 
-meta = allSessionMeta(meta,datapth);
+% meta = allSessionMeta(meta,datapth);
 
 % meta = loadJPV8(meta,datapth); % 1 session
 % meta = loadJPV11(meta,datapth); % 4 sessions
 % meta = loadJPV12(meta,datapth); % 2 sessions
 % meta = loadJPV13(meta,datapth); % 3 sessions
 % meta = loadMAH23(meta,datapth); % 3 sessions
-% meta = loadMAH24(meta,datapth); % 4 sessions (2 dual-probe)
+meta = loadMAH24(meta,datapth); % 4 sessions (2 dual-probe)
 
 %% subset meta (TODO)
 
@@ -58,6 +58,7 @@ for isess = 1:numel(meta)
     [sessobj,sesspar] = loadSessionData(meta(isess),params);
 
     tag(isess) = getTagFromObj(sessobj,sesspar,meta(isess));
+    break
 end
 
 %% SAVE TAG
@@ -66,7 +67,9 @@ fpth = 'C:\Users\munib\Documents\Economo-Lab\data\tagged';
 % fn = 'AllTagged_GoCue_20240817.mat';
 fn = 'AllTagged_LastLick_20240817.mat';
 % fn = 'AllTagged_FirstLick_20240817.mat';
-save(fullfile(fpth,fn),'tag','params','-v7.3')
+% save(fullfile(fpth,fn),'tag','params','-v7.3')
+
+
 
 
 

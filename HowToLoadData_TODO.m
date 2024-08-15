@@ -103,32 +103,6 @@ end
 
 
 
-%%
-
-function [moving_times, stationary_times, threshold] = detectMovementAutoThreshold(motion_energy)
-    % detectMovementAutoThreshold - Detects when the animal is moving or stationary using an automatic threshold.
-    %
-    % Syntax: [moving_times, stationary_times, threshold] = detectMovementAutoThreshold(motion_energy)
-    %
-    % Inputs:
-    %    motion_energy - A 1D array representing the motion energy time series.
-    %
-    % Outputs:
-    %    moving_times - A binary vector of the same length as motion_energy, where 1 indicates moving and 0 indicates stationary.
-    %    stationary_times - A binary vector of the same length as motion_energy, where 1 indicates stationary and 0 indicates moving.
-    %    threshold - The automatically determined threshold value used for movement detection.
-    
-    % Ensure motion_energy is a column vector
-    motion_energy = motion_energy(:);
-    
-    % Automatically determine threshold
-    % Using mean + 2 * standard deviation as an example
-    threshold = mean(motion_energy) + 2 * std(motion_energy);
-    
-    % Create binary vectors for moving and stationary periods
-    moving_times = motion_energy > threshold;
-    stationary_times = ~moving_times;
-end
 
 
 
