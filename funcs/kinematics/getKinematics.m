@@ -39,12 +39,12 @@ end
 % ----------------------------------------------
 % -- Phase of jaw --
 % ----------------------------------------------
-[jawphase,jawamp] = getPhaseOfJaw(kin); %calculateJawPhase(jawpos(:,ct));
-kin.featLeg{end+1} = 'jaw_phase';
-kin.featLeg{end+1} = 'jaw_amp';
-
-kin.dat(:,:,end+1) = jawphase;
-kin.dat(:,:,end+1) = jawamp;
+% [jawphase,jawamp] = getPhaseOfJaw(obj,kin,params.dt); %calculateJawPhase(jawpos(:,ct));
+% kin.featLeg{end+1} = 'jaw_phase';
+% kin.featLeg{end+1} = 'jaw_amp';
+% 
+% kin.dat(:,:,end+1) = jawphase;
+% kin.dat(:,:,end+1) = jawamp;
 
 % ----------------------------------------------
 % -- Motion energy --

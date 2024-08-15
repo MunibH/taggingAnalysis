@@ -11,13 +11,13 @@ end
 
 a = 1.0 * data;
 n = size(a,2);
-m = mean(a,2);
+m = nanmean(a,2);
 if boot
     den = 1;
 else
     den = sqrt(n);
 end
-se = std(a,[],2) / den;
+se = nanstd(a,[],2) / den;
 t_critical = tinv((1 + confidence) / 2, n - 1);
 h = se * t_critical;
 

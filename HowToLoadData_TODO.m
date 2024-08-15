@@ -12,6 +12,8 @@ clc
 % - tprime opto out
 % - time warp
 % - handle tagged units post loading data
+% - fix jaw phase
+%   - it now is a cell array, need to interp the time like ME
 
 %% PARAMETERS
 

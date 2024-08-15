@@ -15,13 +15,13 @@ function [phase,amplitude,analyticalSignal,jawpos_filt] = calculateJawPhase(jawp
 % % Fill missing values using a moving average
 
 %%
-% % Y = fft(jawpos);
-% % f = (0:length(Y)-1) * (400 / length(Y));
-% % plot(f, abs(Y),'LineWidth',2);
-% % xlabel('Frequency (Hz)');
-% % ylabel('Magnitude');
-% % frequency content of jaw has significant peaks from 1-15 Hz
-% % let's bandpass 
+Y = fft(jawpos);
+f = (0:length(Y)-1) * (400 / length(Y));
+plot(f, abs(Y),'LineWidth',2);
+xlabel('Frequency (Hz)');
+ylabel('Magnitude');
+% frequency content of jaw has significant peaks from 1-15 Hz
+% let's bandpass 
 
 % Parameters
 Fs = Fs;  % Sampling frequency (in Hz, replace with your actual sampling rate)
@@ -38,13 +38,7 @@ Wn = [Fc1 Fc2] / (Fs / 2);
 x_filled = fillmissing(jawpos, 'movmean', 10);  % Replace window_size with an appropriate value
 jawpos_filt = filtfilt(b,a,x_filled);
 
-% figure; hold on; 
-% yyaxis left
-% plot(jawpos,'LineWidth',2); 
-% ylabel('jaw pos')
-% yyaxis right
-% plot(jawpos_filt,'LineWidth',2)
-% ylabel('filtered')
+% figure; hold on; plot(jawpos); plot(jawpos_filt)
 
 % Compute the analytical signal using the Hilbert transform
 analyticalSignal = hilbert(jawpos_filt);
