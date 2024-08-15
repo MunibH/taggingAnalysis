@@ -1,6 +1,10 @@
 *.mat
 *.png
 *.fig
+*.npy
+*.gif
+*.mp4
+*.avi
 *.svg
 \results
 \results\
