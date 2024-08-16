@@ -42,11 +42,11 @@ meta = [];
 % meta = allSessionMeta(meta,datapth);
 
 % meta = loadJPV8(meta,datapth); % 1 session
-meta = loadJPV11(meta,datapth); % 4 sessions
+% meta = loadJPV11(meta,datapth); % 4 sessions
 % meta = loadJPV12(meta,datapth); % 2 sessions
 % meta = loadJPV13(meta,datapth); % 3 sessions
 % meta = loadMAH23(meta,datapth); % 3 sessions
-% meta = loadMAH24(meta,datapth); % 4 sessions (2 dual-probe)
+meta = loadMAH24(meta,datapth); % 4 sessions (2 dual-probe)
 
 
 %% LOAD DATA
@@ -63,8 +63,8 @@ kin = getKinematics(obj,me,params);
 
 
 % load neural activity, motion svd, and neural activity predictions from facemap-ANN
-% load('C:\Users\munib\Documents\Economo-Lab\code\taggingAnalysis\facemap\data\MAH24_2024-06-11_FacemapPredictions.mat')
-load('C:\Users\munib\Documents\Economo-Lab\code\taggingAnalysis\facemap\data\JPV11_2023-06-16_FacemapPredictions.mat')
+load('C:\Users\munib\Documents\Economo-Lab\code\taggingAnalysis\facemap\data\MAH24_2024-06-11_FacemapPredictions.mat')
+% load('C:\Users\munib\Documents\Economo-Lab\code\taggingAnalysis\facemap\data\JPV11_2023-06-16_FacemapPredictions.mat')
 % pred size = (time*trials,units)
 % neuralActivity size = (time*trials,units)
 % motionSVD size = (time*trials,SVs)
@@ -428,16 +428,16 @@ for iunit = 1:numel(unitnum)
 
         % sample random trial from cond2plot{itrial}
         thistrial = randsample(size(data.plot.n{itrial},2),1,false);
-        % thistrial = 12;
-        % if itrial==2
-        %     thistrial = 2;
-        % end
-        % if itrial==3
-        %     thistrial = 1;
-        % end
-        % if itrial==4
-        %     thistrial = 10;
-        % end
+        thistrial = 12;
+        if itrial==2
+            thistrial = 2;
+        end
+        if itrial==3
+            thistrial = 1;
+        end
+        if itrial==4
+            thistrial = 10;
+        end
         thistrialid = sesspar.trialid{cond2plot(itrial)}(thistrial);
         
         traj = obj.traj{1}(thistrialid).ts(:,2,4);
@@ -454,6 +454,94 @@ for iunit = 1:numel(unitnum)
         % plot prediction
         temp = squeeze(data.plot.pred{itrial}(:,thistrial,thisclu));
         plot(ax,obj.time,temp,'Color',predcol,'LineWidth',lwpred,'LineStyle','-')
+
+        % if itrial < nTrials2Plot
+        %     ax.XTickLabel = '';
+        % end 
+        title(['Trial ' num2str(itrial)],'fontsize',11,'FontWeight','normal')
+
+        xlim(ax,[-2.1 obj.time(end)])
+        plotEventTimes(ax,sesspar.eventTimes)
+
+        
+    end
+    
+    xlabel('Time (s)','FontSize',12)
+    ylabel('Spks/sec','FontSize',12)
+
+    drawnow;    
+end
+
+
+
+
+%% for tagged units, plot few trials residuals 
+
+close all
+% rng(1)
+
+cols = getColors;
+c(1,:) = cols.rhit_aw;
+c(2,:) = cols.lhit_aw;
+cpred(1,:) = cols.rmiss;
+cpred(2,:) = cols.lmiss;
+
+lw = 2;
+lwpred = 2;
+alph = 0.1;
+alphpred = 0.1;
+
+predcol = [237, 109, 235]./255;
+
+sm = 15;
+
+xl = [-2.1,params.tmax];
+
+qualities = cat(1,sesspar.quality{:});
+
+nTrials2Plot = numel(cond2plot);
+
+unitnum = find(ismember(qualities,'tagged'));
+
+for iunit = 1:numel(unitnum)
+    f = figure;
+    f.Renderer = 'painters';
+    f.Position = [430   118   369   686];
+    t = tiledlayout('flow');
+    
+
+    thisclu = unitnum(iunit);
+    % thisclu = iunit;
+
+    for itrial = 1:nTrials2Plot
+        ax = prettifyAxis(subplot(nTrials2Plot,1,itrial));
+        hold on;
+
+        % sample random trial from cond2plot{itrial}
+        thistrial = randsample(size(data.plot.n{itrial},2),1,false);
+        thistrial = 12;
+        if itrial==2
+            thistrial = 2;
+        end
+        if itrial==3
+            thistrial = 1;
+        end
+        if itrial==4
+            thistrial = 10;
+        end
+
+        thistrialid = sesspar.trialid{cond2plot(itrial)}(thistrial);
+        
+        traj = obj.traj{1}(thistrialid).ts(:,2,4);
+        ft = obj.traj{1}(thistrialid).frameTimes - 0.5;
+
+        temp = squeeze(data.plot.n{itrial}(:,thistrial,thisclu));
+        temp1 = mySmooth(temp,sm,'reflect');
+        % plot(ax,obj.time,temp,'Color','k','LineWidth',lw)
+        temp2 = squeeze(data.plot.pred{itrial}(:,thistrial,thisclu));
+        % plot(ax,obj.time,temp,'Color',predcol,'LineWidth',lwpred,'LineStyle','-')
+        resid = temp1 - temp2;
+        plot(ax,obj.time,resid,"Color",[0.5 0.5 0.5],'LineWidth',2,'LineStyle','-');
 
         % if itrial < nTrials2Plot
         %     ax.XTickLabel = '';
@@ -735,13 +823,112 @@ ylabel('VE')
 
 
 
+%% cd late
+close all
+clear rproj lproj
+
+conds = [1 2]; % rhit,lhit
+
+tix = findTimeIX(obj.time,[sesspar.eventTimes.goCue-0.6 sesspar.eventTimes.goCue],1);
+
+rdata = data.plot.n{1}; % (time,trials,units)
+ldata = data.plot.n{2}; 
+
+rpsth = squeeze(mean(rdata,2));
+lpsth = squeeze(mean(ldata,2));
+
+psth = cat(3,rpsth,lpsth);
+
+cd = calcCD(psth,tix);
+
+rproj.data = tensorprod(rdata,cd,3,1);
+lproj.data = tensorprod(ldata,cd,3,1);
+
+cols = getColors;
+
+f = figure;
+f.Position = [680   611   445   267];
+f.Renderer = "painters";
+ax = prettifyAxis(gca);
+hold on;
+[m,h] = mean_CI(rproj.data);
+shadedErrorBar(obj.time,m,h,{'Color',cols.rhit,'LineWidth',2},0.3,ax);
+[m,h] = mean_CI(lproj.data);
+shadedErrorBar(obj.time,m,h,{'Color',cols.lhit,'LineWidth',2},0.3,ax);
+xlabel('Time from go cue (s)')
+ylabel('Proj (au)')
+xlim([-2.1 obj.time(end)])
+plotEventTimes(ax,sesspar.eventTimes)   
+title('CDchoice, Data')
+
+rdata = data.plot.pred{1}; % (time,trials,units)
+ldata = data.plot.pred{2}; 
+
+rpsth = squeeze(mean(rdata,2));
+lpsth = squeeze(mean(ldata,2));
+
+psth = cat(3,rpsth,lpsth);
+
+cd = calcCD(psth,tix);
+
+rproj.pred = tensorprod(rdata,cd,3,1);
+lproj.pred = tensorprod(ldata,cd,3,1);
+
+cols = getColors;
+
+f = figure;
+f.Position = [680   611   445   267];
+f.Renderer = "painters";
+ax = prettifyAxis(gca);
+hold on;
+[m,h] = mean_CI(rproj.pred);
+shadedErrorBar(obj.time,m,h,{'Color',cols.rhit,'LineWidth',2},0.3,ax);
+[m,h] = mean_CI(lproj.pred);
+shadedErrorBar(obj.time,m,h,{'Color',cols.lhit,'LineWidth',2},0.3,ax);
+xlabel('Time from go cue (s)')
+ylabel('Proj (au)')
+xlim([-2.1 obj.time(end)])
+plotEventTimes(ax,sesspar.eventTimes)   
+title('CDchoice, Predictions')
 
 
+rdata = data.plot.n{1} - data.plot.pred{1}; % (time,trials,units)
+ldata = data.plot.n{2} - data.plot.pred{2}; 
+
+rpsth = squeeze(mean(rdata,2));
+lpsth = squeeze(mean(ldata,2));
+
+psth = cat(3,rpsth,lpsth);
+
+cd = calcCD(psth,tix);
+
+rproj.residual = tensorprod(rdata,cd,3,1);
+lproj.residual = tensorprod(ldata,cd,3,1);
+
+cols = getColors;
+
+f = figure;
+f.Position = [680   611   445   267];
+f.Renderer = "painters";
+ax = prettifyAxis(gca);
+hold on;
+[m,h] = mean_CI(rproj.residual);
+shadedErrorBar(obj.time,m,h,{'Color',cols.rhit,'LineWidth',2},0.3,ax);
+[m,h] = mean_CI(lproj.residual);
+shadedErrorBar(obj.time,m,h,{'Color',cols.lhit,'LineWidth',2},0.3,ax);
+xlabel('Time from go cue (s)')
+ylabel('Proj (au)')
+xlim([-2.1 obj.time(end)])
+plotEventTimes(ax,sesspar.eventTimes)   
+title('CDchoice, Residuals')
 
 
+fns = fieldnames(rproj);
+for i = 1:numel(fns)
+    sel.(fns{i}) = mean(mean(rproj.(fns{i})(tix,:),1),2) - mean(mean(lproj.(fns{i})(tix,:),1),2);
+end
 
 
-
-
+percChangeSelDelay = (sel.data-sel.residual)./sel.data;
 
 
