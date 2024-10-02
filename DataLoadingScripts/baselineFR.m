@@ -1,6 +1,6 @@
 function [mu, sd] = baselineFR(obj,params,prbnum)
 
-% baselineFR - (nCells,1) mean FR for each clu 
+% baselineFR - (nCells,1) mean FR for each clu during ITI
 %%
 
 dt = params.dt;

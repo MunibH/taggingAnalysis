@@ -21,11 +21,13 @@ for i = 1:nClu_min_nTag
     nspks(i) = numel(obj.clu{prbnum}(i).tm);
 end
 if isfield(obj.sglx,'imec')
-    end_time = (obj.sglx(prbnum).imec.fileStart(end)) + (obj.sglx(prbnum).imec.Nsamp(end)./obj.sglx(prbnum).imec.fs);
-    duration =  end_time - obj.sglx(prbnum).imec.fileStart(1); % in sec
+    % end_time = (obj.sglx(prbnum).imec.fileStart(end)) + (obj.sglx(prbnum).imec.Nsamp(end)./obj.sglx(prbnum).imec.fs);
+    % duration =  end_time - obj.sglx(prbnum).imec.fileStart(1); % in sec
+    duration = sum(obj.sglx(prbnum).imec.Nsamp)./obj.sglx(prbnum).imec.fs;
 else
-    end_time = (obj.sglx(prbnum).fileStart(end)) + (obj.sglx(prbnum).Nsamp(end)./obj.sglx(prbnum).fs);
-    duration =  end_time - obj.sglx(prbnum).fileStart(1); % in sec
+    % end_time = (obj.sglx(prbnum).fileStart(end)) + (obj.sglx(prbnum).Nsamp(end)./obj.sglx(prbnum).fs);
+    % duration =  end_time - obj.sglx(prbnum).fileStart(1); % in sec
+    duration = sum(obj.sglx(prbnum).Nsamp)./obj.sglx.fs;
 end
 firing_rate = nspks./duration;
 frmask = firing_rate >= qm.firing_rate;

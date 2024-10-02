@@ -7,7 +7,7 @@ params.alignEvent          = 'goCue'; % 'jawOnset' 'goCue'  'moveOnset'  'firstL
 params.timeWarp            = 0;  % piecewise linear time warping - each lick duration on each trial gets warped to median lick duration for that lick across trials
 params.nLicks              = 20; % number of post go cue licks to calculate median lick duration for and warp individual trials to
 
-params.lowFR               = 0.1; % remove clusters with firing rates across all trials less than this val
+params.lowFR               = 0.5; % remove clusters with firing rates across all trials less than this val
 
 % set conditions to calculate PSTHs for (and get trial numbers for)
 params.condition(1)         = {'(hit|miss|no)'};                             % all trials

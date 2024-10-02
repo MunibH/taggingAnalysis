@@ -44,14 +44,19 @@ params.behav_only = 0;
 datapth = 'C:\Users\munib\Documents\Economo-Lab\data';
 meta = [];
 
-meta = allSessionMeta(meta,datapth);
+% meta = allSessionMeta(meta,datapth);
+meta1 = ALM_SessionMeta(meta,datapth);
+meta2 = tjM1_SessionMeta(meta,datapth);
+meta = cat(2,meta1,meta2);
 
-% meta = loadJPV8(meta,datapth); % 1 session
+% meta = loadJPV8(meta,datapth);  % 1 session
 % meta = loadJPV11(meta,datapth); % 4 sessions
 % meta = loadJPV12(meta,datapth); % 2 sessions
 % meta = loadJPV13(meta,datapth); % 3 sessions
 % meta = loadMAH23(meta,datapth); % 3 sessions
 % meta = loadMAH24(meta,datapth); % 4 sessions (2 dual-probe)
+
+meta = meta(1:2);
 
 %% PARAMETERS
 
@@ -59,8 +64,8 @@ inpar.subspace_names = {'null','potent'};
 
 inpar.method = 'st'; % 'st' or 'ta' or '2pca' or 'regress'
 
-inpar.trials = 'all'; % specify 'all' or condition numbers
-% inpar.trials = 2:5;
+% inpar.trials = 'all'; % specify 'all' or condition numbers
+inpar.trials = 'all'; %2:5;
 
 inpar.delayOnly = false; % if true, only use delay epoch for subspace estimation
 inpar.responseOnly = false; % if true, only use response epoch for subspace estimation
@@ -71,17 +76,20 @@ inpar.nPotentDim = 4;
 
 inpar.alpha = 0; % regularization hyperparam (+ve->discourage sparity, -ve->encourage sparsity)
 
+inpar.estimateDimensionality = false; % if true, find upper-bound of dimensionality using parallel analysis
+inpar.dimpth = 'results\Dimensionality'; % where to save parallel analysis results
 
 %% LOAD DATA and PERFORM SUBSPACE ANALYSIS
 
 all_alignment = struct();
 all_ve.null = nan(size(meta));
 all_ve.potent = nan(size(meta));
+all_contrib = struct();
 for isess = 1:numel(meta)
-    clearvars -except isess meta inpar params datapth utilspth all_alignment all_ve
+    clearvars -except isess meta inpar params datapth utilspth all_alignment all_ve all_contrib
     
     % load data
-    disp(['Session: ' num2str(isess) '/' num2str(numel(meta))])
+    disp(['Session: ' num2str(isess) '/' num2str(numel(meta)) ' : ' meta(isess).anm ' ' meta(isess).date])
     thismeta = meta(isess);
     [sessobj,sesspar] = loadSessionData(thismeta,params);
     tag = getTagFromObj(sessobj,sesspar,thismeta);
@@ -112,11 +120,26 @@ for isess = 1:numel(meta)
         taggedids = tag.id.obj{1};
     end
     out.alignment.pt = (ve.unit.null(taggedids) - ve.unit.potent(taggedids)) ./ (ve.unit.null(taggedids) + ve.unit.potent(taggedids));
+
+    % subspace contribution
+    contrib.null.all = sqrt(sum(out.Q.null.^2,2)) / size(out.Q.null,2) .* out.fr.null;
+    totalcontrib = sum(contrib.null.all);
+    contrib.null.all = contrib.null.all / totalcontrib;
+    contrib.potent.all = sqrt(sum(out.Q.potent.^2,2)) / size(out.Q.potent,2) .* out.fr.potent;
+    totalcontrib = sum(contrib.potent.all);
+    contrib.potent.all = contrib.potent.all / totalcontrib;
+    contrib.null.pt = contrib.null.all(taggedids);
+    contrib.potent.pt = contrib.potent.all(taggedids);
     
     all_alignment(isess).all = out.alignment.all;
     all_alignment(isess).pt = out.alignment.pt;
     all_ve.null(isess) = ve.total.null;
     all_ve.potent(isess) = ve.total.potent;
+    all_contrib(isess).null.all = contrib.null.all;
+    all_contrib(isess).potent.all = contrib.potent.all;
+    all_contrib(isess).null.pt = contrib.null.pt;
+    all_contrib(isess).potent.pt = contrib.potent.pt;
+    
 end
 
 %% plot alignment distributions
@@ -154,7 +177,7 @@ binedges = h.BinEdges;
 
 % plot pt units alignments
 toplot = cell2mat({all_alignment.pt}');
-h = histogram(toplot*-1,10,'edgecolor','none','Normalization','probability');
+h = histogram(toplot*-1.0,10,'edgecolor','none','Normalization','probability');
 h.FaceColor = [0.3 0.3 0.3];
 xl = plot([0 0],ax.YLim,'k--');
 xl.LineWidth = 2;
@@ -172,6 +195,45 @@ set(ax, 'Children', flipud(get(ax, 'Children')) )
 
 xlabel('Subspace alignment')
 ylabel('Probability')
+
+%% plot subspace contribution
+close all
+
+toplot_null = [];
+toplot_potent = [];
+toplotpt_null = [];
+toplotpt_potent = [];
+for i = 1:numel(all_contrib)
+    toplot_null = cat(1,toplot_null,all_contrib(i).null.all);
+    toplot_potent = cat(1,toplot_potent,all_contrib(i).potent.all);
+    toplotpt_null = cat(1,toplotpt_null,all_contrib(i).null.pt);
+    toplotpt_potent = cat(1,toplotpt_potent,all_contrib(i).potent.pt);
+end
+
+toplot = {toplot_null,toplotpt_null,toplot_potent,toplotpt_potent}; % (null,nullpt, potent,potentpt)
+
+
+cols = getColors;
+c(1,:) = cols.null;
+c(2,:) = cols.null./1.5;
+c(3,:) = cols.potent;
+c(4,:) = cols.potent./1.5;
+
+f = figure;
+f.Position = [943   363   292   335];
+f.Renderer = "painters";
+hold on;
+ax = prettifyAxis(gca);
+hold on;
+xs = [1 2 4 5];
+for i = 1:numel(xs)
+    this = toplot{i};
+    xx = simple_violin_scatter(xs(i)*ones(size(this)), this, numel(this)./i, 0.5);
+    scatter(xx, this, 8,'filled', 'markerfacecolor',c(i,:), 'markeredgecolor','none')
+end
+ax.XTick = xs;
+xticklabels({'null','nullpt','potent','potentpt'})
+ylabel('Subspace contribution')
 
 %% plot total variance explained by null and potent subspace
 close all
@@ -199,7 +261,9 @@ for i = 1:numel(data)
     % b(i).FaceAlpha = 1;
     % b(i).BarWidth = 0.7;
 
-    xx = simple_violin_scatter(xs(i)*ones(size(this)), this, numel(meta), 0.2);
+    tempthis = this;
+    tempthis(isnan(this)) = 0;
+    xx = simple_violin_scatter(xs(i)*ones(size(this)), tempthis, numel(meta), 0.2);
     % xx = xs(i)*ones(size(this));
     scatter(xx, this, 30,'filled', 'markerfacecolor',cc(i,:), 'markeredgecolor',[0.8 0.8 0.8])
     xs_(:,i) = xx;
@@ -214,7 +278,7 @@ ax.XTick = xs;
 xticklabels({'Null','Potent'})
 ylabel('Frac. VE')
 xlim([0.5,2.5])
-% ylim([0 0.8])
+ylim([0 0.8])
 
 
 

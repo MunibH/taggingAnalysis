@@ -18,6 +18,12 @@ function data_centered = ZscoreFiringRate(data, mu, sd)
     if length(dims) == 2
         % 2D data: (time x neurons)
         % Subtract the mean and divide by the standard deviation
+        sz1 = size(data);
+        sz2 = size(mu);
+        if sz1(2) ~= sz2(2)
+            mu = mu';
+            sd = sd';
+        end
         data_centered = (data - mu) ./ sd;
     elseif length(dims) == 3
         % 3D data: (time x trials x neurons)

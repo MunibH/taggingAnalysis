@@ -1,37 +1,7 @@
-function [in,rez] = Subspace_SingleTrialElsayed(in,obj,move_,sesspar,meta,params)
+function [in,rez] = Subspace_SingleTrialElsayed(in,obj,move_,trials,input_data,input_data_zscored)
 
 warning('off', 'manopt:getHessian:approx')
 
-disp('Identifying Null and Potent Subspaces using SingleTrialElsayed for:')
-disp([meta.anm ' ' meta.date ' ' meta.region])
-
-%%
-
-in.nProbes = numel(obj.psth);
-
-%% Gather trials 
-
-if strcmpi(in.trials,'all')
-    trials = 1:obj.bp.Ntrials;
-else
-    % ensure trials is not string or char
-    if isstring(in.trials) || ischar(in.trials)
-        error('in.trials must be `all` or numeric conditions')
-    end
-    
-    % get trials to use, balancing right and left trials
-    trials_cond = sesspar.trialid(in.trials);
-    all_trials = cell2mat(trials_cond');
-    right_trials = all_trials(logical(obj.bp.R(all_trials)));
-    left_trials = all_trials(logical(obj.bp.L(all_trials)));
-
-    minTrials = min(numel(right_trials),numel(left_trials));
-    
-    right_trials = randsample(right_trials,minTrials,false);
-    left_trials = randsample(left_trials,minTrials,false);
-
-    trials = sort([right_trials ; left_trials]); 
-end
 
 %% Moving and stationary epochs
 
@@ -51,23 +21,17 @@ end
 mask = move_(ix,trials);
 mask = mask(:); % (time*trials) , 1 where animal is moving, 0 where animal is quiet
 
+% sample same number of move and non-move time points
+nMove = sum(mask);
+nNonMove = sum(~mask);
+minCount = min(nMove,nNonMove);
+moveix = find(mask);
+nonmoveix = find(~mask);
+
+moveix = sort(moveix(randperm(numel(moveix), minCount)));
+nonmoveix = sort(nonmoveix(randperm(numel(nonmoveix), minCount)));
+
 %% Get neural data
-
-if in.nProbes > 1
-    % concatenate dual probes since they're same region, opposite
-    % hemisphere
-    input_data = cat(2,obj.trialdat{1},obj.trialdat{2}); 
-    in.basemu = [obj.baseline{1}.mu ; obj.baseline{2}.mu];
-    in.basesd = [obj.baseline{1}.sigma ; obj.baseline{2}.sigma];
-else
-    input_data = obj.trialdat{1};
-    in.basemu = obj.baseline{1}.mu;
-    in.basesd = obj.baseline{1}.sigma;
-end
-input_data = permute(input_data,[1 3 2]); % (time,trials,units)
-
-% preprocess input_data (zscore with baseline stats)
-input_data_zscored = ZscoreFiringRate(input_data,in.basemu,in.basesd);
 
 % single trial neural data
 in.data.raw = input_data;
@@ -76,14 +40,46 @@ in.data.zscored = input_data_zscored;
 in.dims = size(in.data.raw);
 in.data.zscored_reshaped = reshape(in.data.zscored,in.dims(1)*in.dims(2),in.dims(3));
 
+in.data.null = in.data.zscored_reshaped(nonmoveix,:);
+in.data.potent = in.data.zscored_reshaped(moveix,:);
 
-in.data.null = in.data.zscored_reshaped(~mask,:);
-in.data.potent = in.data.zscored_reshaped(mask,:);
+% calculate move and nonmove mean firing rates
+input_re = reshape(input_data,in.dims(1)*in.dims(2),in.dims(3));
+input_re_nonmove = input_re(nonmoveix,:);
+input_re_move = input_re(moveix,:);
+rez.fr.null = mean(input_re_nonmove,1)';
+rez.fr.potent = mean(input_re_move,1)';
 
 %% Covariances
 
 in.C.null = cov(in.data.null);
 in.C.potent = cov(in.data.potent);
+
+%% Dimensionality
+
+% % either perform parallel analysis or load results of previous parallel analysis runs 
+% fn = [meta.anm '_' meta.date '_numNullPotentDims'];
+% fpth = in.dimpth;
+% if in.estimateDimensionality
+%     disp('Estimating number of null and potent dimensions')
+%     disp('Null:')
+%     dims.null = ParallelAnalysis(in.data.null);
+%     disp('Potent:')
+%     dims.potent = ParallelAnalysis(in.data.potent);
+%     if in.saveDimensionality
+%         SaveResults(fpth,fn,dims);
+%     end
+% 
+% else    
+%     load(fullfile(fpth,fn))
+% end
+% 
+% % cap dimensionality at 20
+% if exist('dims','var')
+%     in.nPotentDim = min(20,dims.potent);
+%     in.nNullDim = min(20,dims.null);
+% end
+
 
 %% Subspace ID
 % main optimization step

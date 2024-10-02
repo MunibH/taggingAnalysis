@@ -9,9 +9,7 @@ addpath(genpath(fullfile(utilspth,'utils')));
 clc
 
 % TODO
-% - tprime opto out
 % - time warp
-% - handle tagged units post loading data
 % - fix jaw phase
 %   - it now is a cell array, need to interp the time like ME
 
@@ -37,18 +35,15 @@ datapth = 'C:\Users\munib\Documents\Economo-Lab\data';
 meta = [];
 
 % meta = allSessionMeta(meta,datapth);
+% meta = ALM_SessionMeta(meta,datapth);
+% meta = tjM1_SessionMeta(meta,datapth);
 
-% meta = loadJPV8(meta,datapth); % 1 session
+% meta = loadJPV8(meta,datapth);  % 1 session
 % meta = loadJPV11(meta,datapth); % 4 sessions
 % meta = loadJPV12(meta,datapth); % 2 sessions
 % meta = loadJPV13(meta,datapth); % 3 sessions
 % meta = loadMAH23(meta,datapth); % 3 sessions
-meta = loadMAH24(meta,datapth); % 4 sessions (2 dual-probe)
-
-%% subset meta (TODO)
-
-% meta = subsetMetaByParams(meta,params);
-
+% meta = loadMAH24(meta,datapth); % 4 sessions (2 dual-probe)
 
 %% LOAD DATA
 

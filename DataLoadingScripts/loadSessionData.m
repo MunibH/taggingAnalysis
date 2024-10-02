@@ -72,6 +72,7 @@ if numel(params.probe) == 1
         obj.psth = {obj.psth};
         obj.trialdat = {obj.trialdat};
         obj.baseline = {obj.baseline};
+        obj.trialfr = {obj.trialfr};
     end
 
 
@@ -90,6 +91,7 @@ elseif numel(params.probe) == 2
         obj.trialdat = {probeobj{1}.trialdat, probeobj{2}.trialdat};
         obj.bp = probeobj{1}.bp;
         obj.baseline = {probeobj{1}.baseline, probeobj{2}.baseline};
+        obj.trialfr = {probeobj{1}.trialfr, probeobj{2}.trialfr};
     end
 
 else 

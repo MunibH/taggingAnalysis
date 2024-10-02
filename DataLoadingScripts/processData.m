@@ -54,12 +54,11 @@ disp('~~~~~~~~~~~ PSTHs and Single Trial Data Done ~~~~~~~~~~~')
 
 
 
-
-% 
-% % get mean fr and std dev for each cluster/trial type during presample (baseline fr)
+% % get mean fr and std dev for each cluster/trial type during presample
+% (baseline fr) and over entire trial
 [obj.baseline.mu, obj.baseline.sigma] = baselineFR(obj,params,prbnum);
-disp('~~~~~~~~~~~ Presample Statisitics Calculated ~~~~~~~~~~~')
-
+[obj.trialfr.mu, obj.trialfr.sigma] = trialFR(obj,params,prbnum);
+disp('~~~~~~~~~~~ FR Statisitics Calculated ~~~~~~~~~~~')
 
 end
 

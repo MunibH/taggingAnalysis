@@ -133,7 +133,7 @@ for icond = 1:numel(trials)
             data.motionSVD{thistrial}(end+1:ix(end),:) = nan;
         end
         try
-        tempN(:,:,itrial) = data.n{thistrial}(ix,:);
+            tempN(:,:,itrial) = data.n{thistrial}(ix,:);
         catch
             'a'
         end
@@ -417,7 +417,7 @@ for iunit = 1:numel(unitnum)
     f.Renderer = 'painters';
     f.Position = [430   118   369   686];
     t = tiledlayout('flow');
-    
+
 
     thisclu = unitnum(iunit);
     % thisclu = iunit;
@@ -439,7 +439,7 @@ for iunit = 1:numel(unitnum)
             thistrial = 10;
         end
         thistrialid = sesspar.trialid{cond2plot(itrial)}(thistrial);
-        
+
         traj = obj.traj{1}(thistrialid).ts(:,2,4);
         ft = obj.traj{1}(thistrialid).frameTimes - 0.5;
         % yyaxis right
@@ -457,25 +457,25 @@ for iunit = 1:numel(unitnum)
 
         % if itrial < nTrials2Plot
         %     ax.XTickLabel = '';
-        % end 
+        % end
         title(['Trial ' num2str(itrial)],'fontsize',11,'FontWeight','normal')
 
         xlim(ax,[-2.1 obj.time(end)])
         plotEventTimes(ax,sesspar.eventTimes)
 
-        
+
     end
-    
+
     xlabel('Time (s)','FontSize',12)
     ylabel('Spks/sec','FontSize',12)
 
-    drawnow;    
+    drawnow;
 end
 
 
 
 
-%% for tagged units, plot few trials residuals 
+%% for tagged units, plot few trials residuals
 
 close all
 % rng(1)
@@ -508,7 +508,7 @@ for iunit = 1:numel(unitnum)
     f.Renderer = 'painters';
     f.Position = [430   118   369   686];
     t = tiledlayout('flow');
-    
+
 
     thisclu = unitnum(iunit);
     % thisclu = iunit;
@@ -531,7 +531,7 @@ for iunit = 1:numel(unitnum)
         end
 
         thistrialid = sesspar.trialid{cond2plot(itrial)}(thistrial);
-        
+
         traj = obj.traj{1}(thistrialid).ts(:,2,4);
         ft = obj.traj{1}(thistrialid).frameTimes - 0.5;
 
@@ -545,19 +545,19 @@ for iunit = 1:numel(unitnum)
 
         % if itrial < nTrials2Plot
         %     ax.XTickLabel = '';
-        % end 
+        % end
         title(['Trial ' num2str(itrial)],'fontsize',11,'FontWeight','normal')
 
         xlim(ax,[-2.1 obj.time(end)])
         plotEventTimes(ax,sesspar.eventTimes)
 
-        
+
     end
-    
+
     xlabel('Time (s)','FontSize',12)
     ylabel('Spks/sec','FontSize',12)
 
-    drawnow;    
+    drawnow;
 end
 
 %% for tagged units, plot few trials in separate plots along with jaw
@@ -596,7 +596,7 @@ for iunit = 1:numel(unitnum)
     f.Renderer = 'painters';
     f.Position = [430   118   369   686];
     t = tiledlayout('flow');
-    
+
 
     thisclu = unitnum(iunit);
     % thisclu = iunit;
@@ -609,13 +609,13 @@ for iunit = 1:numel(unitnum)
         thistrial = randsample(nTrialsCond,1,false);
 
         thistrialid = sesspar.trialid{rconds(itrial)+1}(thistrial);
-        
+
         jaw = mySmooth(squeeze(kin.dat(:,thistrialid,ijaw)),11,'reflect');
         yyaxis right
         cc = [255, 148, 36]./255;
         set(gca, 'YColor', cc./1.2);
         plot(ax,obj.time,jaw,'Color',cc,'LineWidth',1.4)
-        
+
 
         % plot neural data
         yyaxis left
@@ -630,13 +630,13 @@ for iunit = 1:numel(unitnum)
 
         % if itrial < nTrials2Plot
         %     ax.XTickLabel = '';
-        % end 
+        % end
         title(['Trial ' num2str(itrial)],'fontsize',11,'FontWeight','normal')
 
         xlim(ax,[-2.1 obj.time(end)])
         plotEventTimes(ax,sesspar.eventTimes)
 
-        
+
     end
     yyaxis right
     ylabel('Jaw pos (px)')
@@ -644,7 +644,7 @@ for iunit = 1:numel(unitnum)
     xlabel('Time (s)','FontSize',12)
     ylabel('Spks/sec','FontSize',12)
 
-    drawnow;    
+    drawnow;
 end
 
 
@@ -654,6 +654,8 @@ end
 close all
 
 clear ix
+qualities = cat(1,sesspar.quality{:});
+unitnum = find(ismember(qualities,'tagged'));
 
 preix = findTimeIX(obj.time,[sesspar.eventTimes.sample-0.28 sesspar.eventTimes.sample],1);
 ix.sample = findTimeIX(obj.time,[sesspar.eventTimes.sample sesspar.eventTimes.delay],1);
@@ -699,12 +701,13 @@ ylabel('Selectivity')
 for i = 1:numel(epochs)
     thisepoch = epochs{i};
     thisix = ix.(thisepoch);
-    sel1 = selectivity(thisix,:); 
+    sel1 = selectivity(thisix,:);
     sel2 =  selectivity_pred(thisix,:);
+    seldata.(thisepoch) = mean(sel1,1);
     for j = 1:size(sel1,2)
-        temp = corrcoef(sel1(:,j),sel2(:,j));
-        ccc(i,j) = temp(1,2); % (epochs,units)
-        % ccc(i,j) = concordance_correlation_coefficient(sel1(:,j),sel2(:,j));
+        % temp = corrcoef(sel1(:,j),sel2(:,j));
+        % ccc(i,j) = temp(1,2); % (epochs,units)
+        ccc(i,j) = concordance_correlation_coefficient(sel1(:,j),sel2(:,j));
     end
 end
 f = figure;
@@ -737,7 +740,7 @@ for i = 1:numel(unitnum)
     hold on;
     plot(obj.time,selectivity(:,unitnum(i)),'Color','k','LineWidth',2)
     plot(obj.time,selectivity_pred(:,unitnum(i)),'Color',predcol,'LineWidth',2)
-    plotEventTimes(ax,sesspar.eventTimes);    
+    plotEventTimes(ax,sesspar.eventTimes);
     if i == 1
         ll = legend(ax,{'data','pred'}); ll.Box = 'off';
     end
@@ -773,7 +776,35 @@ xlim([-2.1 obj.time(end)])
 % xlabel('Time from go cue (s)')
 % ylabel('Delta selectivity')
 
+f = figure;
+f.Position = [343   658   310   237];
+f.Renderer = "painters";
+ax = prettifyAxis(gca);
+hold on;
+scatter(abs(seldata.sample),ccc(1,:),8,'filled', 'markerfacecolor','k', 'markeredgecolor','none')
+scatter(abs(seldata.sample(unitnum)), ccc(1,unitnum), 25,'filled', 'markerfacecolor',predcol, 'markeredgecolor','k')
+xlabel('Selectivity in sample epoch')
+ylabel('Sample epoch CCC')
 
+f = figure;
+f.Position = [343   658   310   237];
+f.Renderer = "painters";
+ax = prettifyAxis(gca);
+hold on;
+scatter(abs(seldata.delay),ccc(2,:),8,'filled', 'markerfacecolor','k', 'markeredgecolor','none')
+scatter(abs(seldata.delay(unitnum)), ccc(2,unitnum), 25,'filled', 'markerfacecolor',predcol, 'markeredgecolor','k')
+xlabel('Selectivity in delay epoch')
+ylabel('Delay epoch CCC')
+
+f = figure;
+f.Position = [343   658   310   237];
+f.Renderer = "painters";
+ax = prettifyAxis(gca);
+hold on;
+scatter(abs(seldata.response),ccc(3,:),8,'filled', 'markerfacecolor','k', 'markeredgecolor','none')
+scatter(abs(seldata.response(unitnum)), ccc(3,unitnum), 25,'filled', 'markerfacecolor',predcol, 'markeredgecolor','k')
+xlabel('Selectivity in response epoch')
+ylabel('Response epoch CCC')
 
 %% VE binned
 
@@ -782,7 +813,7 @@ close all
 unitnum = find(ismember(qualities,'tagged'));
 nTagged = numel(unitnum);
 
-bin_size = 4; 
+bin_size = 4;
 y_true = cat(2,data.plot.n{:}); % (time,trials,units)
 y_pred = cat(2,data.plot.pred{:}); % (time,trials,units)
 
@@ -832,7 +863,7 @@ conds = [1 2]; % rhit,lhit
 tix = findTimeIX(obj.time,[sesspar.eventTimes.goCue-0.6 sesspar.eventTimes.goCue],1);
 
 rdata = data.plot.n{1}; % (time,trials,units)
-ldata = data.plot.n{2}; 
+ldata = data.plot.n{2};
 
 rpsth = squeeze(mean(rdata,2));
 lpsth = squeeze(mean(ldata,2));
@@ -858,11 +889,11 @@ shadedErrorBar(obj.time,m,h,{'Color',cols.lhit,'LineWidth',2},0.3,ax);
 xlabel('Time from go cue (s)')
 ylabel('Proj (au)')
 xlim([-2.1 obj.time(end)])
-plotEventTimes(ax,sesspar.eventTimes)   
+plotEventTimes(ax,sesspar.eventTimes)
 title('CDchoice, Data')
 
 rdata = data.plot.pred{1}; % (time,trials,units)
-ldata = data.plot.pred{2}; 
+ldata = data.plot.pred{2};
 
 rpsth = squeeze(mean(rdata,2));
 lpsth = squeeze(mean(ldata,2));
@@ -888,12 +919,12 @@ shadedErrorBar(obj.time,m,h,{'Color',cols.lhit,'LineWidth',2},0.3,ax);
 xlabel('Time from go cue (s)')
 ylabel('Proj (au)')
 xlim([-2.1 obj.time(end)])
-plotEventTimes(ax,sesspar.eventTimes)   
+plotEventTimes(ax,sesspar.eventTimes)
 title('CDchoice, Predictions')
 
 
 rdata = data.plot.n{1} - data.plot.pred{1}; % (time,trials,units)
-ldata = data.plot.n{2} - data.plot.pred{2}; 
+ldata = data.plot.n{2} - data.plot.pred{2};
 
 rpsth = squeeze(mean(rdata,2));
 lpsth = squeeze(mean(ldata,2));
@@ -919,7 +950,7 @@ shadedErrorBar(obj.time,m,h,{'Color',cols.lhit,'LineWidth',2},0.3,ax);
 xlabel('Time from go cue (s)')
 ylabel('Proj (au)')
 xlim([-2.1 obj.time(end)])
-plotEventTimes(ax,sesspar.eventTimes)   
+plotEventTimes(ax,sesspar.eventTimes)
 title('CDchoice, Residuals')
 
 
@@ -931,4 +962,67 @@ end
 
 percChangeSelDelay = (sel.data-sel.residual)./sel.data;
 
+%% Plot all PSTHs in figures
+close all
 
+cols = getColors;
+c(1,:) = cols.rhit_aw;
+c(2,:) = cols.lhit_aw;
+cpred(1,:) = cols.rmiss;
+cpred(2,:) = cols.lmiss;
+
+plotError = true;
+
+lw = 2;
+lwpred = 2;
+alph = 0.1;
+alphpred = 0.1;
+
+sm = 1;
+
+xl = [-2.1,params.tmax];
+
+qualities = cat(1,sesspar.quality{:});
+
+f = figure;
+f.Position = [680         484        1059         394];
+f.Renderer = 'painters';
+
+ax1 = prettifyAxis(subplot(1,3,1));
+pos = get(ax1, 'Position'); % Get current position
+pos = [pos(1) pos(2)*1.5 pos(3) pos(4)/2];
+set(ax1, 'Position', pos); % Set the new position
+hold on;
+ax2 = subplot(1,3,2);
+hold on;
+ax3 = subplot(1,3,3);
+hold on;
+
+for iunit = 1:numel(qualities)
+    cla(ax1)
+    cla(ax2)
+    cla(ax3)
+
+    
+    rdata = data.plot.n{1}(:,:,iunit);
+    rpsth = mean(rdata,2);
+    ldata = data.plot.n{2}(:,:,iunit);
+    lpsth = mean(ldata,2);
+    
+    trialdata = cat(2,rdata,ldata);
+    
+    plot(ax1,obj.time,rpsth,'Color',cols.rhit,'LineWidth',2)
+    plot(ax1,obj.time,lpsth,'Color',cols.lhit,'LineWidth',2)
+    plotEventTimes(ax1,sesspar.eventTimes)
+    xlim(ax1,[-2.1 obj.time(end)])
+
+    imagesc(ax2,obj.time,1:size(trialdata,2),trialdata')
+    plotEventTimes(ax2,sesspar.eventTimes)
+    xlim(ax2,[-2.1 obj.time(end)])
+    ylim(ax2,[-0.1 size(trialdata,2)+0.1])
+    
+
+break
+end
+% xlabel(t,['Time from ' params.alignEvent ' (s)'],'FontSize',18)
+% ylabel(t,'Spks/sec','FontSize',18)

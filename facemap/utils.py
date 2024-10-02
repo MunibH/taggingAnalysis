@@ -15,7 +15,7 @@ def LoadSVD(filepath, filename):
     # motion = proc['motion']
     return proc
 
-def LoadFacemapData(filepath, filename):
+def LoadFacemapData(filename,filepath):
     
     data = loadmat(os.path.join(filepath,filename))
     nTimeEachTrial = data['nTimeEachTrial']

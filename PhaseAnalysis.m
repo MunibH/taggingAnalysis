@@ -9,9 +9,10 @@ addpath(genpath(fullfile(utilspth,'utils')));
 clc
 
 % TODO
-% - tprime opto out
-% - time warp
-% - handle tagged units post loading data
+% - label licks with which lick number in bout
+% - find signifcantly modulated cells during licking/one lick...
+%   --- maybe better, find preferred phase for each unit, then sort by that
+%       in heatmap
 
 %% PARAMETERS
 
@@ -23,7 +24,7 @@ params = defaultParams();
 
 params.subset.region = 'any'; % 'alm','tjm1','mc', 'any'
 params.subset.probeType = 'any'; % 'h2','np2','np1', 'any'
-params.qm.quality = {'single','mua','non-somatic','non-somatic-mua'};
+params.qm.quality = {'single','mua'};
 
 params.behav_only = 0;
 
@@ -40,8 +41,8 @@ meta = [];
 % meta = loadJPV11(meta,datapth); % 4 sessions
 % meta = loadJPV12(meta,datapth); % 2 sessions
 % meta = loadJPV13(meta,datapth); % 3 sessions
-% meta = loadMAH23(meta,datapth); % 3 sessions
-meta = loadMAH24(meta,datapth); % 4 sessions (2 dual-probe)
+meta = loadMAH23(meta,datapth); % 3 sessions
+% meta = loadMAH24(meta,datapth); % 4 sessions (2 dual-probe)
 
 
 %% LOAD DATA
@@ -54,245 +55,166 @@ tag = getTagFromObj(obj,sesspar,thismeta);
 me = loadMotionEnergy(obj, thismeta, sesspar, datapth);
 kin = getKinematics(obj, me, sesspar);
 
+%% old functions
+% assignPhases
 
-%% get licks
-close all
-clear all_licks lick_trialtm lick_trial
 
-% for each trial
-% find lick contact times
-% get jaw pos -100 to +100 ms around each lick contact
-% calculate phase?
 
-vidFs = 400;
-presamp = 50;
-postsamp = 50;
-presampms = presamp/vidFs * 1000;
-postsampms = postsamp/vidFs * 1000;
-peri_center = 15;
+%% frequency analysis
+
+[freq,Y] = DoJawFFT(obj,400);
+
+%% get lick pos, vel, phase
+
+p.vidFs = 400;
+
+p.presampMs = 125; % number ms to extract prior to each lick peak
+p.postsampMs = 125; % number ms to extract post to each lick peak
+p.presamp = round(p.presampMs/1000 * p.vidFs);
+p.postsamp = round(p.presampMs/1000 * p.vidFs);
+p.peri_center = 15; % window to look around to correct lick peak
 
 % Parameters
-Fs = vidFs;  % Sampling frequency (in Hz, replace with your actual sampling rate)
-Fc1 = 0.1;    % Lower cutoff frequency (in Hz)
-Fc2 = 15;   % Upper cutoff frequency (in Hz)
+p.filt.Fs = p.vidFs;  % Sampling frequency (in Hz, replace with your actual sampling rate)
+p.filt.Fc1 = 0.1;    % Lower cutoff frequency (in Hz)
+p.filt.Fc2 = 15;   % Upper cutoff frequency (in Hz)
 
-% Normalized cutoff frequencies (between 0 and 1)
-Wn = [Fc1 Fc2] / (Fs / 2);
+p.fillmiss_window = 10;
 
-% Design a 4th-order Butterworth bandpass filter
-[b, a] = butter(4, Wn, 'bandpass');
+[lick] = GetLickPhase(obj,p);
+spk = GetUnitSpkPhase(obj,sesspar.cluid,lick);
 
-traj = obj.traj{1}; % side cam
-feat = 'jaw';
-ifeat = ismember(traj(1).featNames,feat);
+% figure; plot(lick.peak_pro_phase,1:lick.nLicks,'.') % this is the phase at which
+% bpod detected lick (corrected using peak jaw position
+% mean(lick.phase) % mean phase, should be ~pi
 
-lickct = 1;
-for itrial = 1:obj.bp.Ntrials
-    licktimes = sort([obj.bp.ev.lickL{itrial} obj.bp.ev.lickR{itrial}]);
+%% get binned spiking data around licks and preferred phase
+clear seq seq_phase pref_phase otest_pval
 
-    jaw = traj(itrial).ts(:,2,ifeat); % jaw, side cam, ycoord
-    ft = traj(itrial).frameTimes - 0.5;
+phasedt = 0.5; % radians
 
-    licktimes(licktimes<ft(1) | licktimes>ft(end)) = [];
+for iprobe = 1:numel(spk)
+    for iunit = 1:numel(spk{iprobe})
+        % (time from lick start, licknum, unit)
+        [seq{iprobe}(:,:,iunit),seq_phase] = getSeqLickTriggered(...
+            spk{iprobe}(iunit).phase,spk{iprobe}(iunit).licknum,lick.nLicks,phasedt);
 
-    % f = figure;
-    % ax = gca;
-    % hold on;
-    % plot(ft,jaw)
-    % for i = 1:numel(licktimes)
-    %     plot([licktimes(i) licktimes(i)], ax.YLim, 'k-' )
-    % end
+        % Assume `phases` is a 1D array containing the phases (in radians) at which a neuron fired spikes
+        pref_phase{iprobe}(iunit) = mod(angle(mean(exp(1i * spk{iprobe}(iunit).phase))), 2*pi);
 
-
-    % f = figure;
-    % ax = gca;
-    % hold on;
-    for ilick = 1:numel(licktimes)
-        % yyaxis left
-        % cla(ax)
-        % yyaxis right
-        % cla(ax)
-
-        tix = findTimeIX(ft,licktimes(ilick));
-        startix = max(1,tix-presamp);
-        endix = min(tix+postsamp,numel(ft));
-        lick = jaw(startix:endix);
-
-        % find start and end time of 'lick'
-        licktimes_ft = ft(startix:endix);
-
-
-        % bandpass filter (fill missing data first)
-        x_filled = fillmissing(lick, 'movmean', 10);  % Replace window_size with an appropriate value
-        if any(isnan(x_filled)) % there was one lick I found that fillmissing still didn't fill all values, skip that one...
-            continue
-        end
-        lick_filt = filtfilt(b,a,x_filled);
-
-        % where bpod detected lick
-        center_idx = round(numel(lick_filt)/2);
-        % correct the center idx (bpod lick time might not actually be peak of lick
-        [~,center_idx_] = max(lick_filt(center_idx-peri_center:center_idx+peri_center));
-        center_idx_corrected = center_idx_ + center_idx - peri_center;
-        % walk bckward from center find start of lick
-        [~, min_back_idx] = min(lick_filt(1:center_idx_corrected));  % Index of minimum before the peak
-        % walk forward from center find end of lick
-        [~, min_forward_idx] = min(lick_filt(center_idx_corrected:end));  % Index of minimum after the peak
-        min_forward_idx = min_forward_idx + center_idx_corrected - 1;  % Adjust index relative to the original signal
-
-
-        % yyaxis left
-        % plot(lick)
-        % xline(center_idx_corrected)
-        % xline(min_back_idx)
-        % xline(min_forward_idx)
-        % yyaxis right
-        % plot(lick_filt)
-
-        all_licks{lickct} = lick_filt(min_back_idx:min_forward_idx);
-        ix.lick_center{lickct} = center_idx_corrected;
-        ix.lick_center{lickct} = center_idx_corrected;
-        ix.lick_center{lickct} = center_idx_corrected;
-
-
-        % now I have the lick, I need the lick start and end times within
-        % the trial (frameTimes -- ft)
-        lick_trialtm{lickct} = licktimes_ft(min_back_idx:min_forward_idx);
-        lick_trial(lickct) = itrial;
-        lickct = lickct + 1;
+        % test for circular unimodality
+        %  [pval z] = circ_rtest(spk{iprobe}(iunit).phase); % for unimodal data
+        [otest_pval{iprobe}(iunit)] = circ_otest(sort(spk{iprobe}(iunit).phase)); % for unimodal and axially biomdal date
 
     end
-
-
 end
 
-% % resample all licks
-% resampledLickData = cell2mat(resampleToMedianLength(all_licks))';
-
-
-
-%% plot licks
+%% plots - visualize lick pos/vel, and phase
 
 close all
-% cm = cmap_sweep(10,jet);
-% cm = jet(10);
+
+% individual lick trajectories overlaid
 cm = flipud(thermal);
 cm = cm(1:end,:);
 nCols = size(cm,1);
-nLicks = numel(all_licks);
-
-% Create a query points vector for interpolation
-query_points = linspace(1, nCols, nLicks);
-
-% Interpolate each of the R, G, B channels separately
+query_points = linspace(1, nCols, lick.nLicks);
 cm = interp1(1:nCols, cm, query_points);
 
-% Ensure the result is a valid colormap (in case of rounding errors)
-% cm = max(0, min(1, cm));  % Ensure values are between 0 and 1
+f = figure;
+f.Renderer = 'painters';
+f.Position = [401         418        1006         289];
+ax1 = prettifyAxis(subplot(1,2,1));
+hold on;
+for i = 1:lick.nLicks
+    tvec = (1:numel(lick.pos{i}))./p.vidFs * 1000;
+    patchline(tvec,normalize(lick.pos{i},'range',[-1 1]),'EdgeColor',cm(i,:))
+end
+ax2 = prettifyAxis(subplot(1,2,2));
+hold on;
+for i = 1:lick.nLicks
+    tvec = (1:numel(lick.pos{i}))./p.vidFs * 1000;
+    patchline(tvec,normalize(lick.vel{i},'range',[-1 1]),'EdgeColor',cm(i,:))
+end
+xlabel(ax1,'Time (ms)')
+ylabel(ax1,'Normalized lick position')
+ylabel(ax2,'Normalized lick velocity')
+xlim(ax1,[0 250]); xlim(ax2,[0 250])
+ylim(ax1,[-1.1 1.1]); ylim(ax2,[-1.1 1.1])
+
+
+% % lick pos and velocity heatmaps, nans are black
+tvec = (1:size(lick.pos_ts,1))./p.vidFs * 1000;
+
+durations = cell2mat(cellfun(@numel,lick.pos,'uni',0));
+[~,sortix] = sort(durations);
+
+plotpos = normalize(lick.pos_ts,'range',[-1 1]);
+plotpos(isnan(plotpos)) = 10;
+plotpos = plotpos(:,sortix);
+
+plotvel = normalize(lick.vel_ts,'range',[-1 1]);
+plotvel(isnan(plotvel)) = 10;
+plotvel = plotvel(:,sortix);
+
+cmm = brbg;
 
 f = figure;
-ax = prettifyAxis(gca);
+f.Renderer = 'painters';
+f.Position = [516   238   795   566];
+ax1 = prettifyAxis(subplot(1,2,1));
 hold on;
-for i = 1:nLicks
-    tvec = (1:numel(all_licks{i}))./vidFs * 1000;
-    patchline(tvec,zscore(all_licks{i}),'EdgeColor',cm(i,:))
-end
-xlabel('Time (ms)')
-ylabel('zscored licks')
-xlim([0 250])
-% 
-% f = figure;
-% ax = prettifyAxis(gca);
-% hold on;
-% % phase = linspace(0,2*pi,size(resampledLickData,1));
-% for i = 1:nLicks
-%     patchline(phase,zscore(resampledLickData(:,i)),'EdgeColor',cm(i,:))
-% end
-% xlabel('Phase (rad)')
-% ylabel('zscored licks')
-% xlim([0 2*pi])
+imagesc(tvec,1:lick.nLicks,plotpos')
+c1 = colorbar;
+cmap = colormap(cmm);  % Replace 'parula' with your desired colormap
+cmap_with_black = [cmap; 0 0 0];
+colormap(cmap_with_black);
+caxis([-1.1 1]);  % Adjust the lower limit to be below the smallest data value
 
-%% plot licks with phase on x-axis
 
-close all
+ax2 = prettifyAxis(subplot(1,2,2));
+hold on;
+imagesc(tvec,1:lick.nLicks,plotvel')
+c2 = colorbar;
+cmap = colormap(cmm);  % Replace 'parula' with your desired colormap
+cmap_with_black = [cmap; 0 0 0];
+colormap(cmap_with_black);
+caxis([-1.1 1]);  % Adjust the lower limit to be below the smallest data value
 
-% phase of licks
-phases = assignPhases(all_licks);
+xlabel(ax1,'Time (ms)')
+ylabel(ax1,'Lick number')
+title(ax1,'Lick position')
+title(ax2,'Lick velocity')
+xlim(ax1,[0 250]); xlim(ax2,[0 250])
+ylim(ax1,[-0.5 lick.nLicks + 0.5]); ylim(ax2,[-0.5 lick.nLicks + 0.5])
 
+
+% % phase of licks
 f = figure;
-ax = prettifyAxis(gca);
+f.Renderer = 'painters';
+f.Position = [516   238   795   566];
+ax1 = prettifyAxis(subplot(1,2,1));
 hold on;
-for i = 1:nLicks
-    patchline(phases{i},zscore(all_licks{i}),'EdgeColor',cm(i,:))
-end
-xlabel('Phase (rad)')
-ylabel('zscored licks')
-xlim([0 2*pi])
+imagesc(lick.phase_ts_x,1:size(lick.vel_phase,2),normalize(lick.pos_phase(:,sortix),'range',[-1 1])')
+c1 = colorbar;
+cmap = colormap(cmm);  % Replace 'parula' with your desired colormap
+plot(ax1,[pi pi],ax1.YLim,'w--','LineWidth',2)
 
-%% trigger PT units on start of lick
-clear useSpikes nSpikesOnLick spk_licktm spk_licktm_ts lick_ts phase_licktm_ts spk_lick_num spk_lick_tm spk_lick_phase
+ax2 = prettifyAxis(subplot(1,2,2));
+hold on;
+imagesc(lick.phase_ts_x,1:size(lick.vel_phase,2),normalize(lick.vel_phase(:,sortix),'range',[-1 1])')
+c2 = colorbar;
+cmap = colormap(cmm);  % Replace 'parula' with your desired colormap
+plot(ax2,[pi pi],ax2.YLim,'k--','LineWidth',2)
 
-lick_durations = cell2mat( cellfun(@numel,lick_trialtm,'uni',0)  );
-longest_lick = max(lick_durations);
-longest_lick_duration = longest_lick*1/vidFs;
-lick_time_vec = (0:(longest_lick-1)).*(1/vidFs);
-
-nLicks = numel(lick_trialtm);
-
-nProbes = numel(thismeta.probe);
-
-spk_licktm_ts = cell(nProbes,1);
-spk_lick_num = cell(nProbes,1);
-spk_lick_tm = cell(nProbes,1);
-spk_lick_phase = cell(nProbes,1);
-unitct = 1;
-for iprobe = 1:nProbes
-    nTag = tag.nTag(iprobe);
-    spk_licktm_ts{iprobe} = zeros(longest_lick,nLicks,nTag); % (time,lick,unit)
-    for itag = 1:nTag
-        spk_lick_num{iprobe}{itag} = [];
-        spk_lick_tm{iprobe}{itag} = [];
-        spk_lick_phase{iprobe}{itag} = [];
-
-        cluid = tag.id.clu{iprobe}(itag);
-        clu = obj.clu{iprobe}(cluid);
-        for ilick = 1:nLicks
-            thistrial = lick_trial(ilick);
-            thislick_trialtm = lick_trialtm{ilick};
-            % get spikes within lick times on this trial
-
-            onTrial = clu.trial==thistrial;
-            inTime = (clu.trialtm>=thislick_trialtm(1)) & (clu.trialtm<=thislick_trialtm(end));
-
-            useSpikes = (onTrial & inTime);
-            nSpikesOnLick(ilick,unitct) = sum(useSpikes);
-
-            spk_trialtm = clu.trialtm(useSpikes);
-
-            % align to lick onset
-            spk_licktm{iprobe}{itag}{ilick} = spk_trialtm - thislick_trialtm(1);
-            spk_lick_num{iprobe}{itag} = cat(1, spk_lick_num{iprobe}{itag}, ones(size(spk_trialtm))*ilick );
-            spk_lick_tm{iprobe}{itag} = cat(1, spk_lick_tm{iprobe}{itag}, spk_trialtm );
-
-            for i = 1:numel(spk_licktm{iprobe}{itag}{ilick})
-                lix = findTimeIX(lick_time_vec,spk_licktm{iprobe}{itag}{ilick}(i));
-                spk_licktm_ts{iprobe}(lix,ilick,itag) = 1;
-                spk_lick_phase{iprobe}{itag} = cat(1, spk_lick_phase{iprobe}{itag},phases{ilick}(lix));
-            end
-        end
-        unitct = unitct + 1;
-    end
-end
-
-% put all licks into a time series
-lick_ts = nan(longest_lick,nLicks);
-for i = 1:nLicks
-    thislick = all_licks{i};
-    lick_ts(1:numel(thislick),i) = thislick;
-end
+xlabel(ax1,'Phase (rad)')
+ylabel(ax1,'Lick number')
+title(ax1,'Lick position')
+title(ax2,'Lick velocity')
+xlim(ax1,[0 2*pi]); xlim(ax2,[0 2*pi])
+ylim(ax1,[-0.5 lick.nLicks + 0.5]); ylim(ax2,[-0.5 lick.nLicks + 0.5])
 
 
-%% plots - num spikes per lick
+%% plots - num spikes per lick (TODO)
 
 %
 f = figure;
@@ -311,93 +233,192 @@ xticklabels({'Tag1','Tag2','Tag3','Tag4','Tag5'})
 ylabel('# of spikes per lick')
 ylim([-1,ax.YLim(2)])
 
-%% plots - lick triggered raster
+%% plots - lick triggered unit activity
 
 close all
 
-for iprobe = 1:nProbes
-    nTag = tag.nTag(iprobe);
-    for itag = 1:nTag
-        f = figure;
-        f.Position = [1238         438         264         383];
-        f.Renderer = 'painters';
-        ax = prettifyAxis(gca);
-        hold on;
-        scatter(spk_lick_phase{iprobe}{itag},spk_lick_num{iprobe}{itag},'k.')
+xlc = [235, 52, 174]./255;
 
-        xlabel('Phase (rad)')
-        ylabel('Lick #')
-        xlim([0 2*pi])
+confidence = 0.95;
+pvalthresh = 1;
+
+qual = sesspar.quality;
+
+f = figure;
+f.Position = [636   212   912   752];
+f.Renderer = 'painters';
+axRaster = prettifyAxis(subplot('Position', [0.1, 0.35, 0.45, 0.6]));
+axRaster.XTick = [];
+hold on;
+axPSTH = prettifyAxis(subplot('Position', [0.1, 0.1, 0.45, 0.22]));
+hold on;
+axPolar = polaraxes('Position', [0.58, 0.3, 0.4, 0.37]);
+axPolar.FontSize = 14;
+thetaticks(0:45:360)
+axPolar.ThetaAxisUnits = 'radians';
+hold on;
+for iprobe = 1:numel(spk)
+    for iunit = numel(spk{iprobe})-4:numel(spk{iprobe})%1:numel(spk{iprobe})
+        cla(axRaster); cla(axPSTH); cla(axPolar)
+
+        if ~(otest_pval{iprobe}(iunit) <= pvalthresh)
+            continue
+        end
+
+        % raster
+        scatter(axRaster,spk{iprobe}(iunit).phase,spk{iprobe}(iunit).licknum,'k.')
+        plot(axRaster,[pi pi],axRaster.YLim,'--','Color',xlc,'LineWidth',2)
+
+        % psth
+        temp = seq{iprobe}(:,:,iunit);
+        % temp = normalize(temp);
+
+        a = 1.0 * temp;
+
+        n = sum(all(~isnan(temp)));
+        m = nanmean(a,2);
+        se = nanstd(a,[],2) / sqrt(n);
+        t_critical = tinv((1 + confidence) / 2, n - 1);
+        h = se * t_critical;
+
+        [m,h] = mean_CI(temp);
+        shadedErrorBar(seq_phase,m,h,{'Color','k','LineWidth',2},0.3,axPSTH);
+        plot(axPSTH,[pi pi],axPSTH.YLim, ...
+            '--','Color',xlc,'LineWidth',2)
+        scatter(axPSTH,seq_phase,m,'filled','MarkerFaceColor','k','MarkerEdgeColor','flat')
+        % plot(axPSTH,[pref_phase{iprobe}(iunit) pref_phase{iprobe}(iunit)],axPSTH.YLim, ...
+        %     '--','Color',xlc,'LineWidth',2)
+
+        phist = polarhistogram(axPolar,spk{iprobe}(iunit).phase);
+        phist.EdgeColor = 'none';
+        phist.FaceColor = 'k';
+
+        ylabel(axRaster,'Lick #')
+        title(axRaster,['Probe' num2str(iprobe) ', Unit' num2str(sesspar.cluid{iprobe}(iunit)) ', ' qual{iprobe}{iunit}], ...
+            'FontSize', 11)
+        xlabel(axPSTH,'Phase (rad)')
+        ylabel(axPSTH,'spks/radian')
+        xlim(axRaster,[0 2*pi]); xlim(axPSTH,[0 2*pi]);
+        ylim(axRaster,[0 lick.nLicks])
+        title(axPolar,['p=' num2str(round(otest_pval{iprobe}(iunit),4))],'fontweight','normal','fontsize',12)
+
+        pause
+
     end
 end
 
-%% plots - mean spike rate lick triggered, about phase
+%% plots - preferred phase sorted heatmap
 close all
-phasedt = 0.05;
-sm = 21;
 
-for iprobe = 1:nProbes
-    nTag = tag.nTag(iprobe);
-    for itag = 1:nTag
-        f = figure;
-        f.Position = [680   619   368   259];
-        f.Renderer = 'painters';
-        ax = prettifyAxis(gca);
-        hold on;
+cm = brbg;
+sm = 1;
 
-        [seq,seq_phase] = getSeqLickTriggered(...
-            spk_lick_phase{iprobe}{itag},spk_lick_num{iprobe}{itag},phasedt,sm);
+pvalthresh = 0.05;
 
-        [m,h] = mean_CI(seq);
-        shadedErrorBar(seq_phase,m,h,{'Color','k','LineWidth',2},0.3,ax);
-        plot([pi pi],ax.YLim,'k--','LineWidth',2)
-        xlabel('Phase (rad)')
-        ylabel('spks/phase')
-        xlim([0 2*pi])
+for iprobe = 1:numel(spk)
+    f = figure;
+    f.Position = [680   239   502   639];
+    f.Renderer = 'painters';
+    ax = prettifyAxis(gca);
+    hold on;
+
+    thisdata = seq{iprobe};
+    sz = size(thisdata);
+    thisdata_re = reshape(thisdata,sz(1)*sz(2),sz(3));
+    basemu = obj.baseline{iprobe}.mu;
+    basemu = repmat(basemu',sz(1)*sz(2),1);
+    basesd = obj.baseline{iprobe}.sigma;
+    basesd = repmat(basesd',sz(1)*sz(2),1);
+    thisdata_re = (thisdata_re - basemu) ./ basesd;
+    thisdata_zscored_base = reshape(thisdata_re,sz(1),sz(2),sz(3));
+    temp = squeeze(nanmean(thisdata_zscored_base,2));
+    use = otest_pval{iprobe}<pvalthresh;
+    temp = temp(:,use);
+    [~, sortOrder] = sort(pref_phase{iprobe}(use));
+    toplot = temp(:,sortOrder);
+    imagesc(seq_phase,1:size(temp,2),normalize(toplot,'range',[-1 1])')
+    colormap(cm)
+    cbar = colorbar;
+    plot([pi pi],ax.YLim,'k--','LineWidth',2)
+    xlabel('Phase (rad)')
+    ylabel('Unit #')
+    ylim([0.5 size(temp,2)-0.5])
+    xlim([0 2*pi])
+    title('zscored spks/radian')
+end
+
+
+%% plots - phase tuning for each unit
+
+close all
+
+savfig = 1;
+fpth = 'figs/LickPhaseTuning';
+fname = [thismeta.anm '_' thismeta.date];
+
+xlc = [235, 52, 174]./255;
+
+confidence = 0.95;
+
+qual = sesspar.quality;
+
+nPerFig = 16;
+nClus = sum(cell2mat(cellfun(@numel,sesspar.cluid,'uni',0)));
+nFigs = floor(nClus/nPerFig) + double(rem(nClus,nPerFig)>0);
+
+f = figure;
+f.Position = [200          84        1161         829];
+f.Renderer = 'painters';
+t = tiledlayout(4,4);
+title(t,strrep(fname,'_',' '))
+figct = 1;
+plotct = 1;
+for iprobe = 1:numel(spk)
+    for iunit = 1:numel(spk{iprobe})
+        if plotct == nPerFig
+            if savfig
+                mysavefig(f,fpth,[fname '_' num2str(figct)]);
+            end
+            figct = figct + 1;
+            f = figure;
+            f.Position = [200          84        1161         829];
+            f.Renderer = 'painters';
+            t = tiledlayout(4,4);
+            title(t,strrep(fname,'_',' '))
+            plotct = 1;
+        end
+        ax = nexttile();
+        ax.Visible = 'off';
+        axPolar = polaraxes(t);
+        axPolar.FontSize = 9;
+        thetaticks(0:45:360)
+        axPolar.ThetaAxisUnits = 'radians';
+        axPolar.Layout.Tile = plotct; % tile location
+
+
+        phist = polarhistogram(axPolar,spk{iprobe}(iunit).phase,15,'Normalization','probability');
+        % Hide the radial axis (r) and grid
+        % axPolar.RAxis.Visible = 'off'; 
+        axPolar.ThetaColor = 'k';       % Make the theta (angle) labels black
+        % axPolar.RColor = 'none';        % Hide the radial grid lines
+        axPolar.ThetaTick = 0:45:360;   % Set the angle ticks (in degrees)
+
+        title(axPolar,[strrep(thismeta.region{iprobe},'_',' ') ', U' num2str(sesspar.cluid{iprobe}(iunit)) ...
+            ', p=' num2str(round(otest_pval{iprobe}(iunit),3)) ', ' qual{iprobe}{iunit}],'fontweight','normal','fontsize',10,...
+            'Interpreter','none')
+
+        plotct = plotct + 1;
     end
 end
 
 
 
 
-%% plots - lick triggered heatmap
 
-% close all
-% %
-% 
-% lick_durations = cell2mat( cellfun(@numel,lick_trialtm,'uni',0)  );
-% 
-% cm = cividis;
-% 
-% for iprobe = 1:nProbes
-%     nTag = tag.nTag(iprobe);
-%     for itag = 1:nTag
-%         f = figure;
-%         f.Position = [680   379   419   499];
-%         f.Renderer = 'painters';
-%         ax = prettifyAxis(gca);
-%         hold on;
-% 
-% 
-%         this = spk_licktm_ts{iprobe}(:,:,itag);
-%         imagesc(lick_time_vec*1000,1:size(this,2),this');
-%         colormap(cm)
-% 
-%         % for ilick = 1:nLicks
-%         %     thislick = all_licks{ilick};
-%         %     [~,maxix] = max(thislick);
-%         %     maxtime = maxix*(1/vidFs);
-%         %     plot(maxtime*1000,ilick,'w.','MarkerSize',5)
-%         %     lickendtime = numel(thislick)*(1/vidFs);
-%         %     plot(lickendtime*1000,ilick,'m.','MarkerSize',3)
-%         % end
-% 
-%         xlabel('Time from lick (ms)')
-%         ylabel('Lick #')
-%         xlim([0 longest_lick_duration*1000])
-%         ylim([-0.1 nLicks+0.1])
-%     end
-% 
-% end
+
+
+
+
+
 
 
