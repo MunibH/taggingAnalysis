@@ -26,5 +26,10 @@ function trials = balanceAndSplitTrials(trialid, cond2use, trainFraction, testFr
     trials.train = cellfun(@(x) x(1:nTrain), trialsBalanced,'uni',0);
     trials.test = cellfun(@(x) x((nTrain + 1):(nTrain + nTest)), trialsBalanced, 'uni',0);
 
+    if testFraction == 0 || trainFraction == 1 % remove .test, since no testing set
+        trials_ = trials.train;
+        trials = trials_;
+    end
+
 
 end

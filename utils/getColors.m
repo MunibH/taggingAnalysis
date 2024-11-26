@@ -15,4 +15,7 @@ clrs.potent = [255, 56, 140]./255;
 clrs.lick2 = [44, 171, 97] ./ 255; % green
 clrs.lick5 = [93, 46, 176] ./ 255; % purple
 
+clrs.ptn = [252, 119, 3]./255; % orange, PT neurons
+clrs.un = [0.3 0.3 0.3]; % grey, unidentified neurons
+
 end

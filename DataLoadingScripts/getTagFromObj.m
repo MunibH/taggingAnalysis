@@ -23,4 +23,14 @@ for iprb = 1:numel(params.probe)
 
 end
 
+% find where tagged unit would be in data that's been concatenated across
+% probes, if multiple probes
+if numel(params.probe)>1
+    tagix = tag.id.obj{1};
+    tagix = [tagix  ; ( tag.id.obj{2}+tagix(end) )];
+else
+    tagix = tag.id.obj{1};
+end
+tag.tagix_allprobes = tagix;
+
 end

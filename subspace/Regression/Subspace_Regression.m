@@ -11,19 +11,25 @@ epoch.move(1) = mode(obj.bp.ev.goCue) - 2.15;
 epoch.move(2) = mode(obj.bp.ev.goCue) + 1 - 2.15;
 epoch.moveix = findTimeIX(obj.time,epoch.move,1);
 
+epoch.moveix = 1:size(input_data,1); % use all time, for debugging only
+
 %% Get neural data
 
 % single trial neural data
 in.data.raw = input_data;
 in.data.zscored = input_data_zscored;
 
-% get trial averaged move data 
+in.C = cov(reshape(in.data.zscored,[],size(in.data.zscored,3)));
+
+% get trial averaged move data
 right = squeeze(mean(in.data.zscored(epoch.moveix,right_trials,:),2));
 left = squeeze(mean(in.data.zscored(epoch.moveix,left_trials,:),2));
 data.X = cat(1,right,left);
 
-% perform pca on trial averaged data, keep 10 dims
-[~,data.X] = pca(data.X,'NumComponents',10);
+% % perform pca on trial averaged data, keep 10 dims
+if in.regress.pca
+    [~,data.X] = pca(data.X,'NumComponents',10);
+end
 
 %% Get kinematic data
 
@@ -34,11 +40,28 @@ data.Y = cat(1,right,left);
 %% Find W in M = WN (ridge regression)
 
 ridge_vals = logspace(-6,6,100);
+% lasso_vals = logspace(-6, 6, 100); 
+lasso_vals = logspace(6.5,10,10);
 nFolds = 4;
 
-W = MyRidgeRegression(data.X,data.Y,ridge_vals,nFolds);
-% remove intercept coefficients
-W = W(2:end,:);
+if strcmp(in.regress.regularize,'ridge')
+    W = MyRidgeRegression(data.X,data.Y,ridge_vals,nFolds);
+    % remove intercept coefficients
+    W = W(2:end,:);
+elseif strcmp(in.regress.regularize,'lasso')
+    if in.regress.cv
+        W = MyLassoRegression(data.X,data.Y, lasso_vals, nFolds);
+    else
+        W = MyLassoRegression_NoCV(data.X,data.Y);
+    end
+
+    W = W(2:end,:);
+elseif strcmp(in.regress.regularize,'none')
+
+else
+    error('Invalid method. inpar.regress.regularize must be set to either `ridge` or `lasso` or `none`')
+end
+
 
 %% Subspace ID
 
@@ -47,17 +70,25 @@ W = W(2:end,:);
 
 % rank of W (how many linearly independent cols are there)
 % there will be k many potent dimensions, and size(W,2)-k null dimensions
-tolerance = 0.1; % rank(A,TOL) is the number of singular values of A that are larger than TOL.
-k = rank(W', tolerance); 
+tolerance = 0.01; % rank(A,TOL) is the number of singular values of A that are larger than TOL.
+k = rank(W', tolerance);
 
-% column, row, and null space of W can be found through SVD
-[u,s,v] = svd(W'); % W' = u*s*v'. check this with the command: immse(W',u*s*v'). should return ~0
+% % column, row, and null space of W can be found through SVD
+% [u,s,v] = svd(W'); % W' = u*s*v'. check this with the command: immse(W',u*s*v'). should return ~0
+% 
+% % row space of W is potent space
+% rez.Q.potent = v(:,1:k);
+% 
+% % null space of W
+% rez.Q.null = v(:,(k+1):end);
 
-% row space of W is potent space
-rez.Q.potent = v(:,1:k);
+rez.Q.potent = orth(W);
+rez.Q.null = null(W');
 
-% null space of W
-rez.Q.null = v(:,(k+1):end);
+rez.W = W;
+
+
+
 
 end
 

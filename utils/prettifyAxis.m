@@ -1,17 +1,25 @@
 function ax = prettifyAxis(ax,varargin)
 
+tl = 2; % tick length multiplier
+fs = 13; % axis fontsize
+lw = 2; % axis linewidth
+
 if nargin > 1
-    tl = varargin{1}; % tick length multiplier
-else 
-    tl = 2;
-end
+    keys = varargin(1:2:end);
+    values = varargin(2:2:end);
 
-if nargin > 2
-    fs = varargin{2}; % axis font size
-else 
-    fs = 13;
+    if ~iscell(keys)
+        k = keys;
+        v = values;
+        eval([k '= v;']);
+    else
+        for i = 1:numel(keys)
+            k = keys{i};
+            v = values{i};
+            eval([k '= v;']);
+        end
+    end
 end
-
 
 % make axes black
 set(groot, 'DefaultAxesXColor', [0,0,0], ...
@@ -19,7 +27,7 @@ set(groot, 'DefaultAxesXColor', [0,0,0], ...
 'DefaultAxesZColor', [0,0,0]);
 
 % change line thicknesses
-ax.LineWidth = 1;
+ax.LineWidth = lw;
 
 % change tick direction to outside
 ax.TickDir = 'out';

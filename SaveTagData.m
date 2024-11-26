@@ -8,13 +8,14 @@ addpath(genpath(fullfile(utilspth,'utils')));
 
 clc
 
+% process all tagged units and save to single .mat file
 
 %% PARAMETERS
 
 params = defaultParams();
 
 % % specify changes here
-% params.alignEvent = 'lastLick';
+params.alignEvent = 'goCue';
 % params.tmin = -4;
 
 params.subset.region = 'any'; % 'alm','tjm1','mc', 'any'
@@ -33,20 +34,21 @@ params.behav_only = 0;
 % this path specifies path to a folder structured as
 % /data/DataObjects/<MAHXX>/data_structure_XXX.mat
 datapth = 'C:\Users\munib\Documents\Economo-Lab\data';
+savepath = 'C:\Users\munib\Documents\Economo-Lab\data\curated\PTNs';
+fname = 'AllTagged';
 meta = [];
 
 % meta = allSessionMeta(meta,datapth);
+meta1 = ALM_SessionMeta(meta,datapth);
+meta2 = tjM1_SessionMeta(meta,datapth);
+meta = cat(2,meta1,meta2);
 
 % meta = loadJPV8(meta,datapth); % 1 session
 % meta = loadJPV11(meta,datapth); % 4 sessions
 % meta = loadJPV12(meta,datapth); % 2 sessions
 % meta = loadJPV13(meta,datapth); % 3 sessions
 % meta = loadMAH23(meta,datapth); % 3 sessions
-meta = loadMAH24(meta,datapth); % 4 sessions (2 dual-probe)
-
-%% subset meta (TODO)
-
-% meta = subsetMetaByParams(meta,params);
+% meta = loadMAH24(meta,datapth); % 4 sessions (2 dual-probe)
 
 
 %% LOAD DATA
@@ -55,21 +57,19 @@ for isess = 1:numel(meta)
     disp(' ')
     disp(['Session ' num2str(isess) '/' num2str(numel(meta))])
     disp(' ')
-    [sessobj,sesspar] = loadSessionData(meta(isess),params);
+    [sessobj,sesspar(isess)] = loadSessionData(meta(isess),params);
+    tag_ = getTagFromObj(sessobj,sesspar(isess),meta(isess));
 
-    tag(isess) = getTagFromObj(sessobj,sesspar,meta(isess));
-    break
+    % tag(isess) = rmfield(tag_,{'trialid','eventTimes','tagix_allprobes'});
+    tag(isess) = tag_;
 end
+
 
 %% SAVE TAG
 
-fpth = 'C:\Users\munib\Documents\Economo-Lab\data\tagged';
-% fn = 'AllTagged_GoCue_20240817.mat';
-fn = 'AllTagged_LastLick_20240817.mat';
-% fn = 'AllTagged_FirstLick_20240817.mat';
-% save(fullfile(fpth,fn),'tag','params','-v7.3')
-
-
+today = datestr(now, 'yyyymmdd');
+fname = [fname '_' params.alignEvent '_' today];
+SaveResults(savepath,fname,meta,sesspar,tag)
 
 
 

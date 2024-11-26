@@ -1,4 +1,4 @@
-function SubspaceEngine(meta,inpar,obj,par,params,tag,me)
+function [in,out] = SubspaceEngine(inpar,obj,par,me)
 
 %% Gather trials
 
@@ -39,15 +39,18 @@ switch inpar.method
     case 'ta'
         [in,out] = Subspace_TrialAveragedElsayed(inpar,obj,input_data,input_data_zscored,right_trials,left_trials);
 
-    case '2pca'
+    case 'two-pca'
         [in,out] = Subspace_2PCA(inpar,obj,me.move,trials,input_data,input_data_zscored);
 
     case 'regress'
         kin = GetKinForRegression(obj,me,par);
         [in,out] = Subspace_Regression(inpar,obj,input_data,input_data_zscored,right_trials,left_trials,kin);
+    
+    case 'pls'
+        kin = GetKinForRegression(obj,me,par);
+        [in,out] = Subspace_PLS_Regression(inpar,obj,input_data,input_data_zscored,right_trials,left_trials,kin);
         
 end
-
 
 end
 

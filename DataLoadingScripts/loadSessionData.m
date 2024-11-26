@@ -16,10 +16,17 @@ if onlyObj
     return
 end
 
+
 %% delete tagging trials from obj if tagging session
 if params.remove_tag
     disp("~~~~~~~~~~~ Omitting tagging trials ~~~~~~~~~~~")
     obj = deleteTaggingTrials(obj);
+end
+
+%% use early lick trials?
+disp('~~~~~~~~~~~ Handling early lick trials ~~~~~~~~~~~')
+if params.useEarly
+    EarlyLicksFormatData(obj)
 end
 
 %% trials by condition
@@ -96,6 +103,10 @@ elseif numel(params.probe) == 2
 
 else 
     error('more than dual probe processing not yet implemented')
+end
+
+if ~isfield(obj,'imro')
+    obj.imro = nan;
 end
 
 %% get event times

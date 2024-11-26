@@ -1,0 +1,177 @@
+clear,close all
+
+% add paths for data loading scripts, all fig funcs, and utils
+utilspth = 'C:\Users\munib\Documents\Economo-Lab\code\taggingAnalysis';
+addpath(genpath(fullfile(utilspth,'DataLoadingScripts')));
+addpath(genpath(fullfile(utilspth,'facemap')));
+addpath(genpath(fullfile(utilspth,'funcs')));
+addpath(genpath(fullfile(utilspth,'utils')));
+
+clc
+
+% % TODO
+% - make sure there's consistency between this script and saveDataForFacemap.m
+%     - currently, just need to make sure params and meta are set the same
+
+%% PARAMETERS
+
+params = defaultParams();
+
+% % specify changes here
+% params.alignEvent = 'lastLick';
+% params.tmin = -4;
+
+params.subset.region = 'any'; % 'alm','tjm1','mc', 'any'
+params.subset.probeType = 'any'; % 'h2','np2','np1', 'any'
+params.qm.quality = {'single','mua'};
+
+params.behav_only = 0;
+
+params.smooth = 51;
+
+params.dt = 1/75;
+
+
+%% SPECIFY DATA TO LOAD
+
+% this path specifies path to a folder structured as
+% /data/DataObjects/<MAHXX>/data_structure_XXX.mat
+datapth = 'C:\Users\munib\Documents\Economo-Lab\data';
+resultspth = fullfile(utilspth,'results','FacemapCodingDirection');
+meta = [];
+
+% meta = allSessionMeta(meta,datapth);
+meta1 = ALM_SessionMeta(meta,datapth);
+meta2 = tjM1_SessionMeta(meta,datapth);
+meta = cat(2,meta1,meta2);
+
+% meta = loadJPV8(meta,datapth);  % 1 session
+% meta = loadJPV11(meta,datapth); % 4 sessions
+% meta = loadJPV12(meta,datapth); % 2 sessions
+% meta = loadJPV13(meta,datapth); % 3 sessions
+% meta = loadMAH23(meta,datapth); % 3 sessions
+% meta = loadMAH24(meta,datapth); % 4 sessions (2 dual-probe)
+
+
+%% LOAD DATA
+
+saveResults = 1;
+for isess = 1:numel(meta)
+    clearvars -except isess meta inpar params datapth utilspth resultspth saveResults
+
+    % load data
+    disp('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+    disp(['Session: ' num2str(isess) '/' num2str(numel(meta)) ' : ' meta(isess).anm ' ' meta(isess).date])
+    disp('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+    thismeta = meta(isess);
+    [sessobj,sesspar] = loadSessionData(thismeta,params);
+    tag = getTagFromObj(sessobj,sesspar,thismeta);
+    me = loadMotionEnergy(sessobj, thismeta, sesspar, datapth);
+
+    % load facemap predictions, reshape data into trials and align to go cue
+    facemap = LoadAndFormatFacemapPredictions(fullfile(datapth,'Facemap'),meta(isess),sessobj,params);
+    
+    % coding directions from data
+    rdata = facemap.n(:,sesspar.trialid{2},:);
+    rdata_mu = squeeze(mean(rdata,2));
+    ldata = facemap.n(:,sesspar.trialid{3},:);
+    ldata_mu = squeeze(mean(ldata,2));
+    psth = cat(3,rdata_mu,ldata_mu);
+
+    % cd late
+    tix = findTimeIX(sessobj.time,[sesspar.eventTimes.goCue-0.6 sesspar.eventTimes.goCue],1);
+    cd = calcCD(psth,tix);
+
+    proj.data = tensorprod(psth,cd,2,1);
+
+    % coding directions from residuals
+    resid = facemap.n - facemap.pred;
+    rdata = resid(:,sesspar.trialid{2},:);
+    rdata_mu = squeeze(mean(rdata,2));
+    ldata = resid(:,sesspar.trialid{3},:);
+    ldata_mu = squeeze(mean(ldata,2));
+    psth = cat(3,rdata_mu,ldata_mu);
+
+    % cd late
+    cd = calcCD(psth,tix);
+    proj.resid = tensorprod(psth,cd,2,1);
+
+    % avg selectivity in cdchoice in data, residuals, and percent change
+    sel.data = mean(abs(proj.data(tix,1) - proj.data(tix,2)));
+    sel.resid = mean(abs(proj.resid(tix,1) - proj.resid(tix,2)));
+    sel.per_change = (sel.data - sel.resid) / sel.data * 100;
+
+    if saveResults
+        today = datestr(now, 'yyyymmdd');
+        fpth = fullfile(resultspth,today);
+        fname = [thismeta.anm '_' thismeta.date '_CDChoice'];
+        SaveResults(fpth,fname,thismeta,params,sesspar,facemap,proj,sel)
+    end
+
+end
+
+%% PLOT RESULTS
+clear,clc,close all
+
+resultsdate = '20241010';
+
+fetchpth = fullfile('C:\Users\munib\Documents\Economo-Lab\code\taggingAnalysis\results\FacemapCodingDirection',resultsdate);
+contents = dir(fetchpth);
+contents = contents(3:end); % remove . ..
+
+
+plt.sel = nan(numel(contents,3));
+for i = 1:numel(contents) % sessions
+    disp(['Session: ' num2str(i) '/' num2str(numel(contents))])
+    load(fullfile(fetchpth,contents(i).name))
+    
+    plt.sel(i,1) = sel.data;
+    plt.sel(i,2) = sel.resid;
+    plt.sel(i,3) = sel.per_change;
+
+    
+end
+
+%% plot selectivity results
+close all
+clear xs_ ys_
+
+cols = getColors;
+cc(1,:) = cols.null;
+cc(2,:) = cols.potent;
+cc(3,:) = [0.4 0.4 0.4];
+
+f = figure;
+f.Renderer = 'painters';
+f.Position = [726   469   404   294];
+ax = prettifyAxis(subplot(1,2,1)); 
+hold on;
+xs = [1 2];
+data = plt.sel(:,1:2);
+
+for i = 1:numel(xs)
+    this = data(:,i);
+
+    tempthis = this;
+    tempthis(isnan(this)) = 0;
+    xx = simple_violin_scatter(xs(i)*ones(size(this)), tempthis, numel(this), 0.2);
+    scatter(xx, this, 30,'filled', 'markerfacecolor',cc(i,:), 'markeredgecolor',[0.8 0.8 0.8])
+    xs_(:,i) = xx;
+    ys_(:,i) = this;
+end
+
+for i = 1:size(xs_,1)
+    patchline(xs_(i,:),ys_(i,:),'EdgeAlpha',0.3)
+end
+
+ax.XTick = xs;
+xticklabels({'Data','Residuals'})
+ylabel('Selectivity (au)')
+% xlim([0 4])
+ylim([0 1])
+
+
+
+
+
+

@@ -71,5 +71,9 @@ params.probeType = 'any'; % 'h2','np2','np1', 'any'
 params.removeTagOverlap = 1;
 params.tagOverlapThresh = 0.95;
 
+params.useEarly = 0; % if 1, early trials are modified such that:
+% only 'last sample' and 'last delay' epochs are used, and the conditions include early trials, even if speciified ~early
+% this should be used for trial-averaging data only. If using single
+% trials, set this to 0
 
 end % defaultParams()

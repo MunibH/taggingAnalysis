@@ -1,5 +1,6 @@
 % delete tagging trials from obj if tagging session
 function obj = deleteTaggingTrials(obj)
+
 if isfield(obj.bp, 'fns') % usually an optotagging session
     ix = find(cell2mat(cellfun(@(x) ~contains(x,'optoTagging'),obj.bp.fns,'uni',0)));
     behavMask = obj.bp.fidx==ix; % logical array - 1 if behav trial, 0 otherwise
@@ -54,5 +55,40 @@ if isfield(obj.bp, 'fns') % usually an optotagging session
             obj.clu{iprb}(iclu).trialtm = obj.clu{iprb}(iclu).trialtm(spkmask);
         end
     end
+
+
+    % obj.sglx
+    for isglx = 1:numel(obj.sglx)
+        obj.sglx(isglx).sglxfns = obj.sglx(isglx).sglxfns(behavMask);
+        obj.sglx(isglx).Nsamp = obj.sglx(isglx).Nsamp(behavMask);
+        obj.sglx(isglx).fileStart = obj.sglx(isglx).fileStart(behavMask);
+        obj.sglx(isglx).bitFileOffset = obj.sglx(isglx).bitFileOffset(behavMask);
+        obj.sglx(isglx).fnEpochs = obj.sglx(isglx).fnEpochs(behavMask);
+        obj.sglx(isglx).camTrigIX = obj.sglx(isglx).camTrigIX(behavMask);
+        obj.sglx(isglx).laserTrigIX = obj.sglx(isglx).laserTrigIX(behavMask);
+        obj.sglx(isglx).rewardFileOffset = obj.sglx(isglx).rewardFileOffset(behavMask);
+        bitcodefns = fieldnames(obj.sglx(isglx).bitcode);
+        for ib = 1:numel(bitcodefns)
+            obj.sglx(isglx).bitcode.(bitcodefns{ib}) = obj.sglx(isglx).bitcode.(bitcodefns{ib})(behavMask);
+        end
+        
+        if isfield(obj.sglx(isglx),'imec')
+            obj.sglx(isglx).imec.apFn = obj.sglx(isglx).imec.apFn(behavMask);
+            obj.sglx(isglx).imec.Nsamp = obj.sglx(isglx).imec.Nsamp(behavMask);
+            obj.sglx(isglx).imec.firstSample = obj.sglx(isglx).imec.firstSample(behavMask);
+            obj.sglx(isglx).imec.fileStart = obj.sglx(isglx).imec.fileStart(behavMask);
+            if isfield(obj.sglx(isglx).imec,'syncRisingIX')
+                obj.sglx(isglx).imec.syncRisingIX = obj.sglx(isglx).imec.syncRisingIX(behavMask);
+            end
+        end
+
+    end
+    
+
 end
+
+
+
+
+
 end

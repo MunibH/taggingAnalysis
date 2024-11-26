@@ -4,9 +4,13 @@ function cd = calcCD(psth,times)
 % times - indices or logical array of size(psth,1)=time
 %           specifies time points to use when calculating CD
 
-    mu = squeeze(mean(psth(times,:,:),1));
+    mu = squeeze(nanmean(psth(times,:,:),1));
 
-    sd = squeeze(std(psth(times,:,:),[],1));
+    if size(psth,1)==1
+        sd = 1;
+    else
+        sd = squeeze(nanstd(psth(times,:,:),[],1));
+    end
 
     cd = ((mu(:,1)-mu(:,2)))./ sqrt(sum(sd.^2,2));
     cd(isnan(cd)) = 0;

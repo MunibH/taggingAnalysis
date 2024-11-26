@@ -54,16 +54,23 @@ all_ve = [];
 ci_95 = [];
 all_neuron_ve = [];
 n_neurons = [];
+tag_ve = [];
 for isess = 1:numel(meta)
-    clearvars -except isess meta datapth facemapsvdpth params utilspth all_loss all_ve all_neuron_ve n_neurons ci_95
+    clearvars -except isess meta datapth facemapsvdpth params utilspth all_loss all_ve all_neuron_ve n_neurons ci_95 tag_ve  h
+    
+    thismeta = meta(isess);
+    [sessobj,sesspar] = loadSessionData(thismeta,params);
+    tag = getTagFromObj(sessobj,sesspar,thismeta);
 
     load(fullfile(facemapsvdpth, [meta(isess).anm '_' meta(isess).date '_FacemapPredictions.mat']))
     all_loss = cat(2,all_loss,epoch_train_loss);
     all_neuron_ve = cat(2,all_neuron_ve,ve_neuron);
     all_ve = cat(2,all_ve,mean(ve_neuron));
+    tag_ve = cat(2,tag_ve,ve_neuron(tag.tagix_allprobes));
     [~,temp] = mean_CI(ve_neuron);
     ci_95 = cat(2,ci_95,temp);
     n_neurons(isess) = numel(ve_neuron);
+
 
 end
 
@@ -100,19 +107,21 @@ xlabel('Number of neurons')
 
 % neuron ve
 f = figure;
+f.Position = [680   536   442   342];
 f.Renderer = 'painters';
-ax = prettifyAxis(gca);
+ax = prettifyAxis(gca,'def',15);
 hold on;
-histogram(all_neuron_ve)
-mu = mean(all_neuron_ve);
-ll = line([mu mu],ax.YLim);
-ll.LineStyle = '--';
-ll.LineWidth = 2;
-ll.Color = 'k';
+histogram(all_neuron_ve,'Normalization','pdf','EdgeAlpha',0,'FaceColor',[0.4,0.4,0.4])
+histogram(tag_ve,'Normalization','pdf','EdgeAlpha',0,'FaceColor',[252, 119, 3]./255)
+% mu = mean(all_neuron_ve);
+% ll = line([mu mu],ax.YLim);
+% ll.LineStyle = '--';
+% ll.LineWidth = 2;
+% ll.Color = 'k';
 xlim([-0.2 1])
-ylabel('Neuron count')
+ylabel('pdf')
 xlabel('Variance explained')
-
+leg = legend('Single units', 'PT cells'); leg.Box = 'off';
 
 
 
