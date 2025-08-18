@@ -2,6 +2,15 @@
 *.png
 *.fig
 *.svg
+*.csv
+*.npy
+*.h5
+*.nwb
+*.pkl
+*.imro
+*.avi
+*.mp4
+*.mp3
 \results
 \results\
 \tagVidData

@@ -1,7 +1,11 @@
 clear,close all
 
 % add paths for data loading scripts, all fig funcs, and utils
-utilspth = 'C:\Users\munib\Documents\Economo-Lab\code\taggingAnalysis';
+if ismac
+    utilspth = '/Users/munib/Economo-Lab/code/taggingAnalysis';
+else
+    utilspth = 'C:\Users\munib\Documents\Economo-Lab\code\taggingAnalysis';
+end
 addpath(genpath(fullfile(utilspth,'DataLoadingScripts')));
 addpath(genpath(fullfile(utilspth,'funcs')));
 addpath(genpath(fullfile(utilspth,'utils')));
@@ -31,7 +35,11 @@ params.behav_only = 0;
 
 % this path specifies path to a folder structured as
 % /data/DataObjects/<MAHXX>/data_structure_XXX.mat
-datapth = 'C:\Users\munib\Documents\Economo-Lab\data';
+if ismac
+    datapth = '/Users/munib/Economo-Lab/data';
+else
+    datapth = 'C:\Users\munib\Documents\Economo-Lab\data';
+end
 meta = [];
 
 % meta = allSessionMeta(meta,datapth);
